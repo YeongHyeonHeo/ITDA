@@ -244,26 +244,11 @@ export function calculateMatchScore(params: {
   const totalScore = round1(
     categoryPart.score + skillsPart.score + experiencePart.score + careerPart.score
   );
-  const recommendable = totalScore >= 60.0 && categoryPart.score > 0;
+  const recommendable =
+    totalScore >= 60.0 &&
+    categoryPart.score === 20 &&
+    skillsPart.matched_ids.length + experiencePart.matched_ids.length >= 1;
   const fit_grade = totalScore >= 60.0 ? "high" : totalScore >= 40.0 ? "medium" : "low";
-
-  // Generate natural Korean reason grounded strictly on evidence
-  const matchedSkillNames = matchedSkillIds.map((id) => skillLabelMap.get(id) || id);
-  const matchedExpNames = matchedExpIds.map((id) => expLabelMap.get(id) || id);
-
-  let reason = "";
-  if (categoryPart.score > 0) {
-    reason += `희망 직무 분야와 일치하며, `;
-  }
-  if (matchedSkillNames.length > 0) {
-    reason += `보유 역량(${matchedSkillNames.slice(0, 3).join(", ")})이 공고 요건과 부합합니다. `;
-  }
-  if (matchedExpNames.length > 0) {
-    reason += `관련 프로젝트 및 실무 경험(${matchedExpNames.slice(0, 2).join(", ")})을 보유하고 있습니다.`;
-  }
-  if (!reason) {
-    reason = "직무 적합도 및 기본 요건을 검토 중인 공고입니다.";
-  }
 
   return {
     status: "ready",
@@ -276,7 +261,8 @@ export function calculateMatchScore(params: {
       career: careerPart,
     },
     recommendable,
-    reason: reason.trim(),
+    // 81개 전체 공고 계산 시에는 reason을 미리 생성하지 않고 null로 둔다 (TOP 3 선정 후 생성)
+    reason: null,
     needs_check: Array.from(new Set(globalNeedsCheck)),
     algorithm_version: MATCHING_VERSION,
     profile_version: profileVersion,
@@ -284,4 +270,89 @@ export function calculateMatchScore(params: {
     taxonomy_version: taxonomyVersion,
     evaluated_month: evaluatedMonth,
   };
+}
+
+function cleanSnippet(text: string, maxLen = 65): string {
+  const normalized = text
+    .replace(/\s+/g, " ")
+    .replace(/(\d)\s+(년|개월|급|건|곳|억|천|만)/g, "$1$2")
+    .trim();
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, maxLen).trim()}…`;
+}
+
+/**
+ * 추천 TOP 3 공고에 대해서만 호출하여,
+ * 개인 이력서의 경험 제목(title), 원문 근거(evidence), 보유 역량 근거, 자격증 정보를 조합한 구체적 추천 이유를 생성한다.
+ */
+export function buildPersonalizedReason(params: {
+  resume: ResumeMatchingJson;
+  breakdown: NonNullable<MatchResult["breakdown"]>;
+}): string {
+  const { resume, breakdown } = params;
+  const clauses: string[] = [];
+
+  // 1. 경험 제목(title) + 이력서 경험 evidence
+  const matchedExpSet = new Set(breakdown.experience.matched_ids);
+  const matchedExperiences = (resume.experiences || []).filter((exp) =>
+    (exp.competency_ids || []).some((id) => matchedExpSet.has(id))
+  );
+  const targetExp = matchedExperiences[0] || (resume.experiences || [])[0];
+
+  if (targetExp) {
+    const title = cleanSnippet(targetExp.title, 45);
+    const ev = targetExp.evidence ? cleanSnippet(targetExp.evidence, 60) : "";
+    const careerMonths =
+      typeof resume.career?.declared_total_months === "number" &&
+      resume.career.declared_total_months > 0
+        ? `, 총 ${resume.career.declared_total_months}개월`
+        : "";
+    if (ev && ev !== title) {
+      clauses.push(`이력서의 '${title}${careerMonths}' 경험("${ev}")`);
+    } else {
+      clauses.push(`이력서의 '${title}${careerMonths}' 실무·프로젝트 경험`);
+    }
+  }
+
+  // 2. 일치한 역량(스킬) + 이력서 스킬 evidence
+  const skillEvidenceMap = new Map<string, string>();
+  for (const s of resume.skills || []) {
+    if (s.id && s.evidence && !skillEvidenceMap.has(s.id)) {
+      skillEvidenceMap.set(s.id, cleanSnippet(s.evidence, 50));
+    }
+  }
+
+  const matchedSkillDetails = breakdown.skills.matched_ids.slice(0, 3).map((id) => {
+    const label = skillLabelMap.get(id) || id;
+    const ev = skillEvidenceMap.get(id);
+    return ev ? `${label}("${ev}")` : label;
+  });
+
+  if (matchedSkillDetails.length > 0) {
+    clauses.push(`보유 역량 ${matchedSkillDetails.join(", ")}`);
+  }
+
+  // 3. 자격증 (certificates) 및 전공 정보
+  const certs = (resume.certificates || [])
+    .map((c) => cleanSnippet(c, 30))
+    .filter(Boolean)
+    .slice(0, 2);
+  if (certs.length > 0) {
+    clauses.push(`자격증(${certs.join(", ")})`);
+  } else if (resume.major) {
+    clauses.push(`전공(${cleanSnippet(resume.major, 25)})`);
+  }
+
+  if (clauses.length === 0) {
+    const fallbackLabels = [
+      ...breakdown.skills.matched_ids.map((id) => skillLabelMap.get(id) || id),
+      ...breakdown.experience.matched_ids.map((id) => expLabelMap.get(id) || id),
+    ];
+    if (fallbackLabels.length > 0) {
+      return `희망 직무와 일치하며 이력서의 ${fallbackLabels.slice(0, 3).join(", ")} 역량이 공고 요건과 부합합니다.`;
+    }
+    return "희망 직무 및 이력서 보유 역량이 공고 요건과 부합합니다.";
+  }
+
+  return `${clauses.join(" 및 ")} 이력서 정보가 본 공고의 요구 요건과 직접 부합합니다.`;
 }
