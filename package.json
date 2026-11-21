@@ -1,7 +1,7 @@
 {
   "name": "seoul-itda",
   "version": "0.1.0",
-  "description": "서울잇다 Next.js + Supabase scaffold",
+  "description": "\uc11c\uc6b8\uc787\ub2e4 Next.js + Supabase scaffold",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -20,6 +20,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
+    "unpdf": "^1.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

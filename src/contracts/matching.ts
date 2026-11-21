@@ -2,8 +2,21 @@
 export const MATCHING_VERSION = "rules-v1-20-40-25-15" as const;
 export const MATCHING_WEIGHTS = { category: 20, skills: 40, experience: 25, career: 15 } as const;
 export const CATEGORY_IDS = [
-  "development_it", "data_ai", "design", "marketing_pr", "business_admin",
-  "production_quality", "sales_customer", "research",
+  "management_hr",
+  "accounting_finance",
+  "marketing_pr",
+  "sales_customer",
+  "product_md",
+  "it_data",
+  "design",
+  "rnd_engineering",
+  "production_quality",
+  "procurement_logistics_trade",
+  "construction_civil_env",
+  "medical_health",
+  "education",
+  "media_content",
+  "other",
 ] as const;
 export type CategoryId = (typeof CATEGORY_IDS)[number];
 export type ExtractionStatus = "pending" | "completed" | "failed";
@@ -27,7 +40,9 @@ export type JobMatchingJson = {
   unmapped: UnmappedItem[];
 };
 export type ResumeMatchingJson = {
+  education: string | null;
   major: string | null;
+  certificates: string[];
   schema_version: "matching-v1";
   taxonomy_version: string;
   skills: EvidenceItem[];
@@ -49,9 +64,11 @@ export type ResumeMatchingJson = {
   unmapped: UnmappedItem[];
 };
 export type ScorePart = { score: number; max_score: number; matched_ids: string[]; missing_ids: string[]; needs_check: boolean };
+export type FitGrade = "high" | "medium" | "low";
 export type MatchResult = {
   status: "ready" | "no_resume" | "pending" | "failed";
   score: number | null; // 0..100, one decimal; null means not computed
+  fit_grade?: FitGrade | null; // 60+ 'high', 40-59 'medium', <40 'low' (PRD v1.4 D-05)
   breakdown: { category: ScorePart; skills: ScorePart; experience: ScorePart; career: ScorePart } | null;
   recommendable: boolean;
   reason: string | null;
