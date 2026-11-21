@@ -4,10 +4,13 @@
  * 업무 API는 개발팀이 src/contracts/api.ts 에 정의했으며 아직 연결하지 않았습니다.
  */
 export type PolicyStatus = "eligible" | "needs_check" | "ineligible";
+export type ExternalSite = "사람인" | "잡코리아" | "외부";
 export type DemoJob = {
   id: string; company: string; title: string; category: string; location: string;
   employment: string; deadline: string | null; score: number;
   status: PolicyStatus; participating: boolean; closed: boolean;
+  /** D-39: null when no verified external provider or URL exists (no invented links). */
+  externalSite: ExternalSite | null; externalUrl: string | null;
   reason: string; skills: string[]; missing: string[];
   duties: string[]; requirements: string[]; preferred: string[];
   industry: string; postedAt: string;
@@ -48,7 +51,7 @@ const detail = {
 };
 const mock = (fields: Partial<DemoJob> & Pick<DemoJob, "id" | "company" | "title" | "category" | "location" | "score">): DemoJob => ({
   employment: "정규직", deadline: "2026-12-10", status: "eligible", participating: true,
-  closed: false, ...detail, ...fields,
+  closed: false, externalSite: null, externalUrl: null, ...detail, ...fields,
 });
 export const jobs: DemoJob[] = [
   mock({id:"marketing-content",company:"가온마케팅랩",title:"콘텐츠 마케터 (신입)",category:"마케팅·홍보",location:"서울 마포구",score:93,participating:true,deadline:"2026-12-01",
@@ -57,7 +60,7 @@ export const jobs: DemoJob[] = [
     duties:["자사 브랜드 인스타그램·블로그 콘텐츠 기획 및 제작","카드뉴스·숏폼 영상 기획, 외주 디자이너와 협업","월간 콘텐츠 성과 리포트 작성"],
     requirements:["학력 무관, 신입 지원 가능","SNS 채널 운영 경험이 있는 분","기본 문서 작성 및 엑셀 활용 가능자"],
     preferred:["메타·네이버 등 광고 플랫폼 집행 경험","마케팅·광고홍보 관련 전공자"],industry:"광고·마케팅 대행업"}),
-  mock({id:"marketing-performance",company:"누리데이터",title:"마케팅 성과 분석 보조",category:"마케팅·홍보",location:"서울 성동구",score:88,deadline:"2026-11-26",reason:"엑셀·구글 애널리틱스로 캠페인 성과를 정리한 프로젝트가 성과 분석 업무와 맞음.",skills:["엑셀","데이터 분석","SNS 운영"],missing:["GA4 실무"],duties:["마케팅 데이터 정리","성과 리포트 작성"]}),
+  mock({id:"marketing-performance",company:"누리데이터",title:"마케팅 성과 분석 보조",category:"마케팅·홍보",location:"서울 성동구",score:88,participating:false,externalSite:"사람인",deadline:"2026-11-26",reason:"엑셀·구글 애널리틱스로 캠페인 성과를 정리한 프로젝트가 성과 분석 업무와 맞음.",skills:["엑셀","데이터 분석","SNS 운영"],missing:["GA4 실무"],duties:["마케팅 데이터 정리","성과 리포트 작성"]}),
   mock({id:"online-md",company:"한빛리테일",title:"온라인 MD (신입)",category:"상품기획·MD",location:"서울 구로구",score:82,closed:true,deadline:"2026-11-15",employment:"계약직 후 정규직 전환",status:"needs_check",duties:["상품 등록 및 운영","상세페이지 기획"]}),
   mock({id:"brand-marketing",company:"다온커머스",title:"브랜드 마케팅 담당",category:"마케팅·홍보",location:"서울 강남구",score:74,closed:true,deadline:"2026-11-12"}),
   mock({id:"customer-success",company:"서울솔루션",title:"고객 성공 매니저",category:"영업·고객관리",location:"서울 금천구",score:68,deadline:"2026-12-05"}),
@@ -65,14 +68,14 @@ export const jobs: DemoJob[] = [
   mock({id:"production",company:"정밀기업",title:"생산관리 엔지니어",category:"생산·품질",location:"서울 구로구",score:34,closed:true,deadline:"2026-11-08"}),
   mock({id:"data-analyst",company:"모아데이터",title:"데이터 분석 어시스턴트",category:"IT개발·데이터",location:"서울 성북구",score:67,deadline:"2026-12-02"}),
   mock({id:"design-assistant",company:"온디자인",title:"브랜드 디자이너",category:"디자인",location:"서울 종로구",score:62,deadline:"2026-12-03"}),
-  mock({id:"video-content",company:"브릿지미디어",title:"영상 콘텐츠 기획자",category:"미디어·콘텐츠",location:"서울 용산구",score:61,deadline:"2026-11-29"}),
+  mock({id:"video-content",company:"브릿지미디어",title:"영상 콘텐츠 기획자",category:"미디어·콘텐츠",location:"서울 용산구",score:61,participating:false,externalSite:"잡코리아",deadline:"2026-11-29"}),
   mock({id:"hr-assistant",company:"이음인사",title:"인사 운영 보조",category:"경영·기획·인사",location:"서울 중구",score:57,deadline:"2026-12-07"}),
   mock({id:"finance",company:"한결재무",title:"회계 보조",category:"회계·재무",location:"서울 강동구",score:54,deadline:"2026-12-08"}),
   mock({id:"quality",company:"스마트제작",title:"품질관리 실무자",category:"생산·품질",location:"서울 구로구",score:51,deadline:"2026-12-09"}),
   mock({id:"research",company:"네오연구소",title:"연구개발 지원",category:"연구개발·설계",location:"서울 강서구",score:49,deadline:"2026-12-11"}),
   mock({id:"logistics",company:"바른물류",title:"물류 운영 담당",category:"구매·물류·무역",location:"서울 송파구",score:47,deadline:"2026-12-13"}),
   mock({id:"medical",company:"바이오케어",title:"의료기기 시험 보조",category:"의료·보건",location:"서울 성동구",score:44,deadline:"2026-12-14"}),
-  mock({id:"education",company:"배움플러스",title:"교육 콘텐츠 운영",category:"교육",location:"서울 마포구",score:41,deadline:"2026-12-15"}),
+  mock({id:"education",company:"배움플러스",title:"교육 콘텐츠 운영",category:"교육",location:"서울 마포구",score:41,participating:false,deadline:"2026-12-15"}),
   mock({id:"trade",company:"한길무역",title:"무역 사무 지원",category:"구매·물류·무역",location:"서울 양천구",score:38,deadline:"2026-12-16"}),
 ];
 export function getJob(id:string):DemoJob | undefined { return jobs.find(job=>job.id===id); }

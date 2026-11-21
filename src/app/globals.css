@@ -60,3 +60,75 @@
 .company-subsidy-feedback{border-radius:10px;background:#f8f7fd;padding:17px;font-size:13px;color:#70788d}
 .company-subsidy-disclaimer{font-size:11px;color:#989daf;line-height:1.7;margin:16px 0 0;word-break:keep-all}
 @media(max-width:760px){.company-subsidy-box{padding:20px}.company-subsidy-layout{grid-template-columns:1fr}.company-subsidy-heading{flex-wrap:wrap}.company-subsidy-job{flex-wrap:wrap}}
+
+/* PRD v1.5 UI batch 1: B1, B7, B15, A8, C1, C2 */
+.login-signup-link{margin:16px 0 0;text-align:center;color:#858ba0;font-size:13px}
+.login-signup-link a{color:#8066D9;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.chip:disabled{opacity:.45;cursor:not-allowed}
+.company-policy-note{color:#7a8295;font-size:11px;line-height:1.5;align-self:center;max-width:280px;word-break:keep-all}
+@media(max-width:760px){.company-policy-note{flex-basis:100%;max-width:100%;}}
+
+/* D-40 / S2-C: enterprise signup demo layout; visually consistent with youth signup. */
+.company-signup-form .company-verify-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.company-signup-form .company-verify-row .btn{min-height:46px;white-space:nowrap}
+.company-signup-form .company-verify-feedback{margin:11px 0 0;padding:11px 13px;border-radius:9px;font-size:13px;line-height:1.65;word-break:keep-all}
+.company-signup-form .company-verify-feedback.is-success{background:#f3f0ff;color:#5d45b6}
+.company-signup-form .company-verify-feedback.is-error{background:#fff1f0;color:#a34a4a}
+.company-choice-box{margin-top:15px;padding:15px;border:1px solid #e7ddfa;border-radius:10px;background:#faf8ff}
+.company-choice-box .form-label{color:#6759a2}
+.company-agreements{display:grid;gap:12px;margin-top:24px;padding:18px;background:#f8f7fd;border-radius:12px}
+.company-agreement-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.company-agreement-row label{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.55;cursor:pointer;min-width:0}
+.company-agreement-row input{accent-color:#8066d9;margin:4px 0 0;flex-shrink:0}
+.company-agreement-row strong{color:#7358c3}
+.company-view-link{flex-shrink:0;border:0;background:none;color:#7358c3;text-decoration:underline;text-underline-offset:3px;font-size:12px;font-weight:700;padding:5px}
+.company-signup-submit{margin-top:22px;min-height:50px}
+.company-signup-submit:disabled{background:#e5e4ec;color:#a0a0ab;border-color:#e5e4ec}
+.company-signup-example{margin:19px 0 0;font-size:11px;color:#8990a2;line-height:1.9;word-break:keep-all}
+.company-signup-example code{padding:2px 4px;background:#f3f2f7;border-radius:4px;color:#72648c;white-space:nowrap}
+.company-terms-placeholder{text-align:left;background:#f7f7fb;padding:16px;border-radius:10px;font-size:13px;line-height:1.8;word-break:keep-all}
+.company-terms-placeholder p{margin:0 0 8px}
+.company-terms-placeholder p:last-child{margin-bottom:0}
+@media(max-width:520px){.company-signup-form .company-verify-row{grid-template-columns:minmax(0,1fr)}.company-signup-form .company-verify-row .btn{width:100%}.company-agreement-row{align-items:flex-start}}
+
+
+/* PRD v1.5 D-39: platform vs. external application (A3–A6). */
+.pill-route-internal{background:#fff3e1;color:#ad791e}
+.pill-route-external{background:#edeafb;color:#7052b7}
+.btn-external-apply{background:#fff;color:#7052b7;border-color:#8066d9;white-space:nowrap}
+.btn-external-apply:hover{background:#f8f5ff;filter:none}
+.apply-route-bar{align-items:center}
+.apply-route-copy{min-width:0;flex:1}
+.apply-route-copy .apply-route-message{margin:8px 0 4px;color:#50586f;font-size:13px;line-height:1.65;word-break:keep-all}
+.apply-route-copy .small-text{line-height:1.65;word-break:keep-all}
+.apply-route-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch;min-width:220px;flex-shrink:0}
+.apply-route-actions>.btn{min-width:220px}
+@media(max-width:760px){.apply-route-actions{width:100%;min-width:0}.apply-route-actions>.btn{width:100%;min-width:0}}
+
+/* PRD v1.5 A7: one shared company posting selector drives subsidy + applicants. */
+.company-job-picker{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:22px 0 0;padding:17px 21px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.company-job-picker label{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
+.company-job-picker .company-job-select{flex:1;min-width:240px;max-width:none;width:100%;margin:0}
+.company-subsidy-box{margin-top:15px}
+.company-filters{margin-top:19px;display:block}
+.company-filters .filter-buttons{justify-content:flex-start}
+.company-subsidy-alert{padding:12px 16px;margin:0 0 15px;border-radius:9px;background:#fff0ee;border:1px solid #f2d3d1;color:#a9514d;font-size:13px;line-height:1.6;font-weight:650;word-break:keep-all}
+@media(max-width:760px){.company-job-picker{align-items:stretch;flex-direction:column}.company-job-picker .company-job-select{min-width:0}}
+
+
+/* PRD v1.5 B3 — Signup resume analysis progress (demo only). */
+.resume-analysis-steps{display:grid;gap:12px;text-align:left;margin:22px auto 0;max-width:520px}
+.resume-analysis-step{display:flex;align-items:center;gap:13px;padding:14px 16px;border:1px solid #e5e7ef;background:#f8f9fc;border-radius:11px;min-width:0}
+.resume-analysis-step.is-active{border-color:#e2ad60;background:#fff9ee}
+.resume-analysis-step.is-done{border-color:#cde7d5;background:#f4faf5}
+.resume-analysis-step.is-pending{opacity:.65}
+.resume-analysis-step-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:34px;height:34px;border-radius:50%;font-size:13px;font-weight:800;background:#e8eaf0;color:#70788e}
+.resume-analysis-step.is-active .resume-analysis-step-icon{background:#fae8c9;color:#aa782a}
+.resume-analysis-step.is-done .resume-analysis-step-icon{background:#dcefe1;color:#46885b}
+.resume-analysis-step strong{display:block;font-size:14px;color:#20233a;line-height:1.5}
+.resume-analysis-step small{display:block;font-size:12px;color:#81899d;line-height:1.5;word-break:keep-all}
+.resume-analysis-spinner{display:block;width:17px;height:17px;border:2px solid #d6b377;border-top-color:#9b6e26;border-radius:50%;animation:itda-resume-spin .8s linear infinite}
+.resume-analysis-demo-note{margin:17px auto 2px;max-width:520px;font-size:12px!important;color:#8a90a3;line-height:1.65;word-break:keep-all}
+.modal-actions .btn:disabled{background:#e6e7ec;color:#9aa0af;border-color:#e6e7ec;cursor:progress;filter:none}
+@keyframes itda-resume-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.resume-analysis-spinner{animation:none;border-top-color:#9b6e26}}

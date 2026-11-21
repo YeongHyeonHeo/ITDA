@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {useRouter,useSearchParams} from "next/navigation";
 import {Suspense,useState,type FormEvent} from "react";
 import SiteHeader from "@/components/SiteHeader";
@@ -33,6 +34,7 @@ function LoginForm({role,onError}:{role:Role;onError:(msg?:string)=>void}){
     <label className="field-group"><span className="form-label">이메일</span><input className="field" type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="demo@example.com"/></label>
     <label className="field-group"><span className="form-label">비밀번호</span><input className="field" type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" placeholder="8자 이상 입력"/></label>
     <div className="login-actions"><button type="submit" className={`btn ${role==="youth"?"btn-orange":"btn-purple"}`} disabled={busy}>{busy?"로그인 중...":"로그인"}</button></div>
+    <p className="login-signup-link">계정이 없나요? <Link href={`/signup?role=${role}`}>회원가입</Link></p>
   </form>;
 }
 function LoginInner(){

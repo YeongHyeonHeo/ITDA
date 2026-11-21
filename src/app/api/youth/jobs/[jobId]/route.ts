@@ -4,13 +4,13 @@ import { requireUser } from "@/server/auth/require-user";
 import { createAdminClient, jsonError } from "@/lib/supabase/admin";
 import { getDecryptedYouthProfile } from "@/server/auth/youth-profile";
 import {
-  buildPersonalizedReason,
   calculateMatchScore,
   fromCachedMatchRow,
   isMatchCacheValid,
   toMatchResultRow,
   type CachedMatchResultRow,
 } from "@/server/matching/score";
+import { generateLlmReason } from "@/server/matching/reason";
 import { evaluateJobPolicy } from "@/server/policy/evaluate";
 import { getEvaluatedMonthKST, getTodayKST } from "@/server/auth/crypto";
 import { TAXONOMY_VERSION } from "@/contracts/taxonomy";
@@ -55,10 +55,19 @@ export async function GET(request: Request, context: RouteContext) {
       salary,
       work_address,
       work_gu,
+      holiday_type,
+      posted_at,
+      headcount,
+      work_hours,
+      selection_process,
+      documents,
+      benefits,
+      company_homepage,
       deadline,
       status,
       source,
       industry,
+      raw_text,
       matching_json,
       job_version,
       crawled_at,
@@ -165,7 +174,10 @@ export async function GET(request: Request, context: RouteContext) {
     if (!isClosed && cachedMatch.recommendable && !cachedMatch.reason && resumeJson && cachedMatch.breakdown) {
       match = {
         ...cachedMatch,
-        reason: buildPersonalizedReason({
+        reason: await generateLlmReason({
+          companyName: company.name,
+          jobTitle: jobRow.title,
+          jobRawText: jobRow.raw_text,
           resume: resumeJson,
           breakdown: cachedMatch.breakdown,
         }),
@@ -189,7 +201,10 @@ export async function GET(request: Request, context: RouteContext) {
       !isClosed && baseMatch.recommendable && resumeJson && baseMatch.breakdown
         ? {
             ...baseMatch,
-            reason: buildPersonalizedReason({
+            reason: await generateLlmReason({
+              companyName: company.name,
+              jobTitle: jobRow.title,
+              jobRawText: jobRow.raw_text,
               resume: resumeJson,
               breakdown: baseMatch.breakdown,
             }),
@@ -233,6 +248,16 @@ export async function GET(request: Request, context: RouteContext) {
     match,
     policy,
     position_raw: jobRow.position_raw || null,
+    work_address: jobRow.work_address ?? null,
+    work_gu: jobRow.work_gu ?? null,
+    holiday_type: jobRow.holiday_type ?? null,
+    posted_at: jobRow.posted_at ?? null,
+    work_hours: jobRow.work_hours ?? null,
+    selection_process: jobRow.selection_process ?? null,
+    documents: jobRow.documents ?? null,
+    benefits: jobRow.benefits ?? null,
+    company_homepage: jobRow.company_homepage ?? null,
+    headcount: jobRow.headcount ?? null,
     preferred: jobRow.preferred || null,
     employment_type_raw: jobRow.employment_type_raw || null,
     career_req: jobRow.career_req || null,

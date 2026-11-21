@@ -1,7 +1,21 @@
 /** 화면 표시용 포맷 헬퍼 (API 응답 → 라벨/등급). 데모 데이터와 무관한 순수 함수. */
-import type { PolicyStatus } from "@/contracts/api";
+import type { PolicyStatus, JobCard } from "@/contracts/api";
 import type { MatchResult } from "@/contracts/matching";
 import { SKILL_TAXONOMY, EXPERIENCE_TAXONOMY } from "@/contracts/taxonomy";
+
+/** 지원 경로 분기 (PRD D-39): 참여기업은 내부 지원, 미참여는 백엔드 검증 외부 링크. */
+export type ApplyRoute =
+  | { kind: "internal"; label: string }
+  | { kind: "external"; url: string; label: string }
+  | { kind: "unavailable"; label: string };
+export function applyRoute(card: Pick<JobCard, "company" | "external_url">): ApplyRoute {
+  if (card.company.participation === "participating") return { kind: "internal", label: "JOB잇다 지원" };
+  if (card.external_url) return { kind: "external", url: card.external_url, label: "외부 사이트 지원" };
+  return { kind: "unavailable", label: "지원 경로 확인 필요" };
+}
+export function applyRouteTone(r: ApplyRoute): string {
+  return r.kind === "internal" ? "pill-route-internal" : "pill-route-external";
+}
 
 const TAXON_LABEL = new Map<string, string>(
   [...SKILL_TAXONOMY, ...EXPERIENCE_TAXONOMY].map((t) => [t.id, t.label])
