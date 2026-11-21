@@ -90,3 +90,17 @@
 .company-terms-placeholder p{margin:0 0 8px}
 .company-terms-placeholder p:last-child{margin-bottom:0}
 @media(max-width:520px){.company-signup-form .company-verify-row{grid-template-columns:minmax(0,1fr)}.company-signup-form .company-verify-row .btn{width:100%}.company-agreement-row{align-items:flex-start}}
+
+
+/* PRD v1.5 D-39: platform vs. external application (A3–A6). */
+.pill-route-internal{background:#fff3e1;color:#ad791e}
+.pill-route-external{background:#edeafb;color:#7052b7}
+.btn-external-apply{background:#fff;color:#7052b7;border-color:#8066d9;white-space:nowrap}
+.btn-external-apply:hover{background:#f8f5ff;filter:none}
+.apply-route-bar{align-items:center}
+.apply-route-copy{min-width:0;flex:1}
+.apply-route-copy .apply-route-message{margin:8px 0 4px;color:#50586f;font-size:13px;line-height:1.65;word-break:keep-all}
+.apply-route-copy .small-text{line-height:1.65;word-break:keep-all}
+.apply-route-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch;min-width:220px;flex-shrink:0}
+.apply-route-actions>.btn{min-width:220px}
+@media(max-width:760px){.apply-route-actions{width:100%;min-width:0}.apply-route-actions>.btn{width:100%;min-width:0}}
