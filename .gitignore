@@ -6,4 +6,8 @@ out/
 *.tsbuildinfo
 .DS_Store
 .vercel/
+
+# Local reference material (not shared in git)
+gangso-matching-share/
+md/
 .gangso-matching-share/
