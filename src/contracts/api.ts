@@ -82,6 +82,16 @@ export type MainResponse = {
   fallback_used: boolean;
 };
 export type JobDetailResponse = JobCard & {
+  work_address: string | null;
+  work_gu: string | null;
+  holiday_type: string | null;
+  posted_at: string | null;
+  work_hours: string | null;
+  selection_process: string | null;
+  documents: string | null;
+  benefits: string | null;
+  company_homepage: string | null;
+  headcount: number | null;
   position_raw: string | null;
   preferred: string | null;
   employment_type_raw: string | null;
