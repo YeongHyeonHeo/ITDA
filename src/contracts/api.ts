@@ -7,6 +7,11 @@ export type PolicyResult = {
   items: { age: "pass" | "fail" | "unknown"; residence: "pass" | "fail" | "unknown"; regular: "pass" | "fail" | "unknown" };
   disclaimer: string;
 };
+export type YouthPolicyResult = {
+  status: PolicyStatus;
+  items: { age: "pass" | "fail" | "unknown"; residence: "pass" | "fail" | "unknown" };
+  disclaimer: string;
+};
 export type MeResponse = {
   user_id: string;
   role: "youth" | "company" | null;
@@ -15,13 +20,16 @@ export type MeResponse = {
 };
 export type ProfileInput = {
   name: string;
-  age: number;
+  birth_date: string; // YYYY-MM-DD (서버에서 KST 기준 만 나이 계산)
   address: { sido: string; sigungu: string };
-  desired_categories: CategoryId[];
+  desired_categories: CategoryId[]; // 중복 없는 1~3개
 };
 export type CreateProfileRequest = ProfileInput & { privacy_consent: true };
 export type UpdateProfileRequest = Partial<ProfileInput>;
 export type ProfileResponse = ProfileInput & {
+  age: number; // KST 기준 계산된 만 나이
+  email: string; // S6 내 정보 표시용 (변경 불가)
+  youth_policy: YouthPolicyResult; // 연령·서울 거주 기준 예비진단
   user_id: string;
   profile_version: number;
   privacy_consent_at: string;
@@ -37,8 +45,10 @@ export type ResumeResponse = {
   profile_version: number;
 };
 export type CompanySummary = {
-  id: string; name: string;
-  participation: "certified_only" | "posting_verified" | "demo_participant";
+  id: string;
+  name: string;
+  industry: string | null;
+  gu: string | null;
   is_demo: boolean;
 };
 export type JobCard = {
@@ -52,30 +62,75 @@ export type JobCard = {
   is_closed: boolean;
   applied: boolean;
   can_apply: boolean;
-  apply_block_reason: "already_applied" | "closed" | "company_not_participating" | "resume_required" | null;
+  apply_block_reason: "already_applied" | "closed" | "resume_required" | null;
   match: MatchResult;
   policy: PolicyResult;
 };
-export type MainResponse = { has_resume: boolean; recommended: JobCard[]; postings: JobCard[]; fallback_used: boolean };
+export type MainResponse = {
+  youth_summary: {
+    name: string;
+    age: number;
+    address: { sido: string; sigungu: string };
+    youth_policy: YouthPolicyResult;
+  };
+  has_resume: boolean;
+  recommended: JobCard[];
+  postings: JobCard[];
+  fallback_used: boolean;
+};
 export type JobDetailResponse = JobCard & {
-  duties: string | null; requirements: string | null; preferred: string | null;
+  position_raw: string | null;
+  preferred: string | null;
+  employment_type_raw: string | null;
+  career_req: string | null;
+  education_req: string | null;
+  salary: string | null;
+  company_industry: string | null;
+  crawled_at: string | null;
   matching_json: JobMatchingJson | null;
 };
 export type ApplyRequest = { job_id: string };
 export type ApplyResponse = { application_id: string; already_applied: boolean };
 export type ApplicationSummary = {
-  application_id: string; job_id: string; title: string; company_name: string;
-  applied_at: string; match_snapshot: MatchResult; policy_snapshot: PolicyResult;
+  application_id: string;
+  job_id: string;
+  title: string;
+  company_name: string;
+  applied_at: string;
+  match_snapshot: MatchResult;
+  policy_snapshot: PolicyResult;
   resume_url: string;
 };
 export type ApplicationsResponse = { applications: ApplicationSummary[] };
 export type CompanyOverviewResponse = {
   companies: { company: CompanySummary; jobs: { job_id: string; title: string; is_closed: boolean; applicant_count: number }[] }[];
 };
+export type ApplicantResumeSummary = {
+  education: string | null;
+  major: string | null;
+  certificates: string[];
+  skills: string[];
+  experiences: {
+    title: string;
+    kind: "employment" | "internship" | "project" | "other";
+    evidence: string;
+    start_month: string | null;
+    end_month: string | null;
+    is_current: boolean | null;
+  }[];
+};
 export type Applicant = {
-  application_id: string; name: string; desired_categories: CategoryId[];
-  match_snapshot: MatchResult; policy_snapshot: PolicyResult;
-  resume_url: string; applied_at: string;
+  application_id: string;
+  name: string;
+  age: number;
+  address: { sido: string; sigungu: string };
+  email: string;
+  desired_categories: CategoryId[];
+  resume_summary: ApplicantResumeSummary | null;
+  match_snapshot: MatchResult;
+  policy_snapshot: PolicyResult;
+  resume_url: string;
+  applied_at: string;
 };
 export type ApplicantsResponse = {
   job: { job_id: string; title: string };
