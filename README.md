@@ -1,4 +1,4 @@
-# JOB잇다 (서울잇다) — 청년 고용 인센티브 매칭 플랫폼
+# ITDA— 청년 고용 인센티브 매칭 플랫폼
 
 서울형 강소기업 채용공고와 청년 이력서를 AI로 정제하고, 규칙 기반 100점 적합도로 공고를 추천하는 서비스입니다.
 Next.js + TypeScript + Tailwind CSS / Supabase Auth·Postgres·Storage. 화면과 API를 단일 Next.js 앱으로 배포합니다.
