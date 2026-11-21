@@ -1,6 +1,8 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import SiteHeader from "@/components/SiteHeader";
+import CompanySubsidyPanel from "@/components/CompanySubsidyPanel";
+import {usePathname} from "next/navigation";
 import JobitdaModal from "@/components/JobitdaModal";
 import DemoNotice from "@/components/DemoNotice";
 import {demoApplicants,readDemoApplied,policyText,type PolicyStatus,type DemoApplicant} from "@/lib/demo-data";
@@ -16,6 +18,8 @@ function Chevron({open}:{open:boolean}){
   </svg>;
 }
 export default function CompanyHome(){
+  const pathname=usePathname();
+  const isPreview=pathname?.startsWith("/preview/") ?? false;
   const [selectedJob,setSelectedJob]=useState("marketing-content");const [filter,setFilter]=useState<Filter>("all");
   const [expanded,setExpanded]=useState<string|null>("mins");const [demoApplied,setDemoApplied]=useState(false);
   const [policyOpen,setPolicyOpen]=useState(false);const [pdfNotice,setPdfNotice]=useState(false);
@@ -30,6 +34,7 @@ export default function CompanyHome(){
   const shown=filter==="all"?current:current.filter(a=>a.policy===filter);
   return <><SiteHeader role="company"/><main className="page-shell company-shell">
     <section className="company-banner"><div><h1>가온마케팅랩</h1><p>광고·마케팅 대행업 · 서울 마포구</p></div><div className="company-status"><span className="pill pill-indigo">서울형 강소기업 인증 (가상)</span> <span className="pill pill-purple">시연 계정</span><p>인증 유효기간 확인 필요</p></div></section>
+    <CompanySubsidyPanel preview={isPreview}/>
     <div className="company-filters"><select className="field company-job-select" value={selectedJob} onChange={e=>{setSelectedJob(e.target.value);setExpanded(null);setFilter("all");}} aria-label="자사 채용공고 선택">
       <option value="marketing-content">콘텐츠 마케터 (신입) · 12/01 마감 · 지원자 {counts.all}명</option>
       <option value="another-job">홍보 지원 (시연) · 지원자 0명</option>

@@ -38,3 +38,25 @@
 /* 2026-11-21: Layout polish for the resume section and company information card. */
 .mypage-resume-card .file-summary { margin-top: 24px; }
 .company-info > h2:first-child { margin-top: 0; }
+
+
+/* D-38: company-level subsidy eligibility is separate from applicant policy status. */
+.company-subsidy-box{margin:22px 0 0;padding:24px 28px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.company-subsidy-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:17px}
+.company-subsidy-heading h2{font-size:18px;margin:0 0 7px}
+.company-subsidy-heading p{font-size:13px;line-height:1.6;color:#83899b;margin:0}
+.company-subsidy-layout{display:grid;grid-template-columns:minmax(230px,1fr) minmax(270px,1.15fr);gap:16px}
+.company-subsidy-list{display:grid;align-content:start;gap:8px}
+.company-subsidy-job{display:flex;gap:12px;justify-content:space-between;align-items:center;text-align:left;min-height:58px;border:1px solid #e7e9f1;border-radius:10px;background:#fff;padding:11px 13px;cursor:pointer;color:var(--ink)}
+.company-subsidy-job[aria-pressed="true"]{border-color:#8d78d9;background:#f8f5ff}
+.company-subsidy-job-title{font-weight:700;font-size:13px;line-height:1.5;min-width:0;word-break:keep-all}
+.company-subsidy-job .pill{flex-shrink:0;font-size:11px}
+.company-subsidy-detail{border:1px solid #e9e8f1;background:#f8f7fd;border-radius:11px;padding:17px 19px}
+.company-subsidy-label{font-size:12px;color:#868ca0;font-weight:700}
+.company-subsidy-result{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.company-subsidy-result strong{font-size:15px}
+.company-subsidy-meta{color:#777f93;font-size:12px;margin:12px 0 0}
+.company-subsidy-reason{font-size:13px;line-height:1.8;color:#50566d;margin:10px 0 0;word-break:keep-all}
+.company-subsidy-feedback{border-radius:10px;background:#f8f7fd;padding:17px;font-size:13px;color:#70788d}
+.company-subsidy-disclaimer{font-size:11px;color:#989daf;line-height:1.7;margin:16px 0 0;word-break:keep-all}
+@media(max-width:760px){.company-subsidy-box{padding:20px}.company-subsidy-layout{grid-template-columns:1fr}.company-subsidy-heading{flex-wrap:wrap}.company-subsidy-job{flex-wrap:wrap}}
