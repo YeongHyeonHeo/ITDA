@@ -44,12 +44,14 @@ export type ResumeResponse = {
   matching_json: ResumeMatchingJson | null;
   profile_version: number;
 };
+export type CompanyParticipation = "participating" | "non_participating";
 export type CompanySummary = {
   id: string;
   name: string;
   industry: string | null;
   gu: string | null;
   is_demo: boolean;
+  participation: CompanyParticipation;
 };
 export type JobCard = {
   job_id: string;
@@ -62,7 +64,8 @@ export type JobCard = {
   is_closed: boolean;
   applied: boolean;
   can_apply: boolean;
-  apply_block_reason: "already_applied" | "closed" | "resume_required" | null;
+  apply_block_reason: "already_applied" | "closed" | "company_not_participating" | "resume_required" | null;
+  external_url: string | null;
   match: MatchResult;
   policy: PolicyResult;
 };
@@ -110,6 +113,12 @@ export type JobIncentivePolicy = {
   employment_type_raw: string | null;
   reason: string;
   disclaimer: string;
+};
+export type CreateCompanyProfileRequest = { company_id: string };
+export type CompanyProfileResponse = {
+  user_id: string;
+  role: "company";
+  company: CompanySummary;
 };
 export type CompanyOverviewResponse = {
   companies: {

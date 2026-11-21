@@ -61,12 +61,14 @@ export async function GET() {
   const todayKST = getTodayKST();
   const body: CompanyOverviewResponse = {
     companies: (companies ?? []).map((c) => {
+      const isParticipating = Boolean(c.is_demo);
       const company: CompanySummary = {
         id: c.id,
         name: c.name,
         industry: c.business_desc ?? null, // companies 테이블엔 업종 전용 컬럼이 없어 사업내용으로 대체
         gu: c.gu ?? null,
-        is_demo: c.is_demo,
+        is_demo: isParticipating,
+        participation: isParticipating ? "participating" : "non_participating",
       };
       const companyJobs = (jobs ?? [])
         .filter((j) => j.company_id === c.id)

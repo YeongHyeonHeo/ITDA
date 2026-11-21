@@ -33,10 +33,10 @@ export const matchFixture = {
 } satisfies MatchResult;
 const jobCard = {
   job_id: "00000000-0000-4000-8000-000000000001",
-  company: { id: "00000000-0000-4000-8000-000000000002", name: "가상 데이터기업", industry: "데이터·AI 서비스업", gu: "마포구", is_demo: true },
+  company: { id: "00000000-0000-4000-8000-000000000002", name: "가상 데이터기업", industry: "데이터·AI 서비스업", gu: "마포구", is_demo: true, participation: "participating" },
   title: "데이터 분석 신입 채용", categories: ["it_data"], employment_kind: "regular",
   location: "서울 마포구", deadline: null, is_closed: false, applied: false,
-  can_apply: true, apply_block_reason: null, match: matchFixture,
+  can_apply: true, apply_block_reason: null, external_url: null, match: matchFixture,
   policy: { status: "needs_check", items: { age: "unknown", residence: "unknown", regular: "pass" }, disclaimer: "입력정보 기반 예비진단이며 지원금 수급을 확정하지 않습니다." },
 } satisfies MainResponse["postings"][number];
 export const mainFixture = {

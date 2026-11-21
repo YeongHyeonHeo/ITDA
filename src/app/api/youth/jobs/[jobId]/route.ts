@@ -57,6 +57,7 @@ export async function GET(request: Request, context: RouteContext) {
       work_gu,
       deadline,
       status,
+      source,
       industry,
       matching_json,
       job_version,
@@ -88,6 +89,13 @@ export async function GET(request: Request, context: RouteContext) {
     .eq("job_id", jobId)
     .maybeSingle();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const companyRow = (jobRow.companies as any) || {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const categoryRows = (jobRow.job_post_categories as any[]) || [];
+  const categories = categoryRows.map((c) => c.category_slug as CategoryId);
+  const isParticipating = Boolean(companyRow.is_demo);
+
   const isApplied = Boolean(existingApp);
   const todayKST = getTodayKST();
   const deadlineStr = jobRow.deadline ? String(jobRow.deadline) : null;
@@ -95,7 +103,12 @@ export async function GET(request: Request, context: RouteContext) {
   const hasResume = profile.resume?.matching_json != null;
 
   let canApply = true;
-  let applyBlockReason: "already_applied" | "closed" | "resume_required" | null = null;
+  let applyBlockReason:
+    | "already_applied"
+    | "closed"
+    | "company_not_participating"
+    | "resume_required"
+    | null = null;
 
   if (isApplied) {
     canApply = false;
@@ -103,23 +116,21 @@ export async function GET(request: Request, context: RouteContext) {
   } else if (isClosed) {
     canApply = false;
     applyBlockReason = "closed";
+  } else if (!isParticipating) {
+    canApply = false;
+    applyBlockReason = "company_not_participating";
   } else if (!hasResume) {
     canApply = false;
     applyBlockReason = "resume_required";
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const companyRow = (jobRow.companies as any) || {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const categoryRows = (jobRow.job_post_categories as any[]) || [];
-  const categories = categoryRows.map((c) => c.category_slug as CategoryId);
 
   const company: CompanySummary = {
     id: companyRow.id || "",
     name: companyRow.name || "강소기업",
     industry: jobRow.industry || companyRow.business_desc || null,
     gu: companyRow.gu || null,
-    is_demo: Boolean(companyRow.is_demo),
+    is_demo: isParticipating,
+    participation: isParticipating ? "participating" : "non_participating",
   };
 
   const evaluatedMonth = getEvaluatedMonthKST();
@@ -218,6 +229,7 @@ export async function GET(request: Request, context: RouteContext) {
     applied: isApplied,
     can_apply: canApply,
     apply_block_reason: applyBlockReason,
+    external_url: jobRow.source || null,
     match,
     policy,
     position_raw: jobRow.position_raw || null,
