@@ -191,7 +191,7 @@ PDF 이력서를 업로드하고 텍스트 추출 → Storage 저장 → `resume
   - **`youth_summary`**: `{ name, age, address, youth_policy }` (`S4` 상단 Hero `"김민수 님에게 맞는 서울형 강소기업 공고 / 내 기본요건 예비진단 · 만 25세 · 서울특별시 마포구"` 표시용).
   - **`postings`**: `jobs.match_status = 'verified'`인 공고 전체 (마감 공고 포함). 정렬 순서:
     - 이력서 등록 시: **점수 높은 순 (`score DESC`) → 진행중 공고 먼저 (`is_closed ASC`) → 마감일 빠른 순 (`deadline ASC NULLS LAST`) → 공고 ID (`job_id ASC`)**.
-    - 이력서 미등록 시: **등록일 최신순 (`crawled_at / posted_at DESC NULLS LAST`) → 공고 ID (`job_id ASC`)**.
+    - 이력서 미등록 시: **진행중 공고 먼저 (`is_closed ASC`) → 마감일 빠른 순 (`deadline ASC NULLS LAST`) → 공고 ID (`job_id ASC`)**.
   - **`recommended`**: `recommendable === true`이며 마감되지 않은 진행중 공고 중 상위 **최대 3건 (TOP 3)**.
   - **적합도 화면 표시 (PRD v1.4 D-05)**: 청년·기업 화면 모두 0~100점 점수 숫자를 표시하지 않고 `fit_grade` 3단계(**60점 이상 `high`(높음) / 40~59점 `medium`(보통) / 39점 이하 `low`(낮음)**)로 표시합니다. API는 `score`와 함께 `fit_grade`를 제공합니다.
   - **`match.reason` 문장 제공 범위 (PRD v1.4 D-19, D-33)**: 추천 TOP 3에만 LLM/근거 기반 추천 이유를 제공하며, 4위 이하 공고는 `match.reason = null`로 제공(대신 `matched_ids`/`missing_ids` 역량 목록 제공)합니다.

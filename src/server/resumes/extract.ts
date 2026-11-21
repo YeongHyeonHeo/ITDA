@@ -137,7 +137,7 @@ function heuristicExtract(rawText: string): ResumeMatchingJson {
  * Call OpenAI to structure raw resume text into ResumeMatchingJson
  */
 export async function extractResumeMatchingJson(rawText: string): Promise<ResumeMatchingJson> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     return heuristicExtract(rawText);
   }
