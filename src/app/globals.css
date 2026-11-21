@@ -104,3 +104,13 @@
 .apply-route-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch;min-width:220px;flex-shrink:0}
 .apply-route-actions>.btn{min-width:220px}
 @media(max-width:760px){.apply-route-actions{width:100%;min-width:0}.apply-route-actions>.btn{width:100%;min-width:0}}
+
+/* PRD v1.5 A7: one shared company posting selector drives subsidy + applicants. */
+.company-job-picker{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:22px 0 0;padding:17px 21px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.company-job-picker label{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap}
+.company-job-picker .company-job-select{flex:1;min-width:240px;max-width:none;width:100%;margin:0}
+.company-subsidy-box{margin-top:15px}
+.company-filters{margin-top:19px;display:block}
+.company-filters .filter-buttons{justify-content:flex-start}
+.company-subsidy-alert{padding:12px 16px;margin:0 0 15px;border-radius:9px;background:#fff0ee;border:1px solid #f2d3d1;color:#a9514d;font-size:13px;line-height:1.6;font-weight:650;word-break:keep-all}
+@media(max-width:760px){.company-job-picker{align-items:stretch;flex-direction:column}.company-job-picker .company-job-select{min-width:0}}
