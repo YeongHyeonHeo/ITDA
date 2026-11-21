@@ -15,8 +15,9 @@
 3. **100% 원상복구 (`finally` 클린업 보장)**
    - 테스트 성공·실패 여부와 무관하게 `finally` 블록에서 아래 순서로 임시 데이터를 모두 삭제합니다:
      1. 테스트 중 생성된 `applications` 행 삭제 (`youth_user_id IN (...)` — FK 제약 해제)
-     2. Storage `resumes` 버킷에 업로드된 테스트 PDF 파일 삭제
-     3. 임시 생성한 Supabase Auth 유저 3명 `deleteUser` 삭제 (`profiles`, `youth_profiles`, `youth_categories`, `resume_versions`, `match_results`, `company_accounts`는 `ON DELETE CASCADE`로 자동 정리)
+     2. 테스트 중 `participating`으로 바뀐 기업(`블렌드엑스`)의 `participation` / `is_demo`를 원래 상태로 복구
+     3. Storage `resumes` 버킷에 업로드된 테스트 PDF 파일 삭제
+     4. 임시 생성한 Supabase Auth 유저 3명 `deleteUser` 삭제 (`profiles`, `youth_profiles`, `youth_categories`, `resume_versions`, `match_results`, `company_accounts`는 `ON DELETE CASCADE`로 자동 정리)
 
 ---
 
@@ -28,7 +29,7 @@
 | :--- | :---: | :--- | :--- |
 | **`Youth A`** | `youth` | 이름: `강서울` / 생년월일: `1997-03-14` (만 29세) / 주소: `서울특별시 마포구` / 희망직무: `["marketing_pr"]` / PDF: `이력서_A_강서울_디지털캠페인AE.pdf` | • 정책 `eligible` (`충족 가능`)<br>• 블렌드엑스 AE 공고 **100점 (`high`)** 추천 1위<br>• 지원·중복 연타·스냅샷 불변성·본인 PDF 열람 |
 | **`Youth C`** | `youth` | 이름: `최윤서` / 생년월일: `1987-03-10` (만 39세, **4개월 뒤 만 40세 경계 나이**) / 주소: `서울특별시 성동구` / 희망직무: `["design"]` | • 정책 **`needs_check` (`추가 확인 필요` — 6개월 경계 나이 룰)**<br>• 타인(`Youth A`) 지원서 PDF 열람 시 **`403 APPLICATION_ACCESS_DENIED`** 검증<br>• 기업 `C02` 정책 필터(`eligible` vs `needs_check`) 검증 |
-| **`Company BlendX`** | `company` | `profiles.role = 'company'` + `company_accounts`로 **`주식회사 블렌드엑스`** 연결 | • `A01`, `C01`, `C02` 자사 지원자 조회 및 자사 지원자 PDF 열람(`200`)<br>• 타사(엔디컴퍼니) 공고 조회 시 **`403 COMPANY_ACCESS_DENIED`** 검증 |
+| **`Company BlendX`** | `company` | `POST /api/company/profile`로 **`주식회사 블렌드엑스`** 회원가입 연결 | • 가입 시 `companies.participation = 'participating'`(`is_demo = true`) 자동 전환<br>• `A01`, `C01`, `C02` 자사 지원자 조회 및 자사 지원자 PDF 열람(`200`)<br>• 타사(엔디컴퍼니) 공고 조회 시 **`403 COMPANY_ACCESS_DENIED`** 검증 |
 
 ### 2.2 대상 공고 3종 (원격 DB에서 동적 조회)
 
@@ -48,7 +49,8 @@
 | :---: | :--- | :--- | :--- |
 | **T01** | `H01` `GET /api/health` | 인증 없이 호출 | `200 OK`, `status === "ok"` |
 | **T02** | DB 시드 테이블 | `companies`, `jobs`, `job_categories`, `job_post_categories` 카운트 | `companies = 256`, `jobs = 81`, `job_categories = 15`, `job_post_categories >= 200` |
-| **T03** | 시연 대상 공고 | `Open Job (BlendX AE)`, `Closed Job`, `Other Company Job` 조회 | 3종 모두 유효한 UUID와 `matching_json` 존재 |
+| **T03** | 시연 대상 공고 | `Open Job (BlendX AE)`, `Closed Job`, `Other Company Job`, `Non-Participating Open Job` 조회 | 4종 모두 유효한 UUID와 `matching_json` 존재 |
+| **C00** | `GET /api/companies`<br>`POST /api/company/profile` | ① 기업 목록 `?q=블렌드엑스` 조회<br>② 미로그인(401) · 없는 기업 UUID(404)<br>③ `Company BlendX` 정상 회원가입(201) · 중복 가입(409)<br>④ `Youth A` 청년 계정으로 기업 가입 시도(403) | ① `200`, 블렌드엑스 포함<br>② `401 UNAUTHORIZED`, `404 COMPANY_NOT_FOUND`<br>③ `201`, `company.participation === "participating"`, `is_demo === true` 전환 + 중복 시 `409 PROFILE_ALREADY_EXISTS`<br>④ `403 ROLE_FORBIDDEN` |
 
 ---
 
@@ -84,7 +86,7 @@
 | :---: | :--- | :--- | :--- |
 | **T16** | `Y05` `GET /api/youth/main` | `Youth A` (이력서 업로드 전) | `200 OK`, `has_resume === false`, `recommended: []` (0건), 모든 공고 `match.status === "no_resume"`, `score === null`, `can_apply === false`, `apply_block_reason`이 `"resume_required"`(또는 마감은 `"closed"`) |
 | **T17** | `Y07` `POST /api/applications` | `Youth A` (이력서 업로드 전) + `{ job_id: OpenJobId }` | `400 RESUME_REQUIRED` |
-| **T18** | `Y04` `PUT /api/youth/resume` | `Youth A` + 텍스트 파일(`bad.txt`) | `415 UNSUPPORTED_FILE_TYPE` (`%PDF-` 시그니처 불일치) |
+| **T18** | `Y04` `PUT /api/youth/resume` | `Youth A` + ① 비-PDF(`bad.txt`) ② 텍스트 없는 빈 PDF ③ 5MiB 초과 파일 | ① `415 UNSUPPORTED_FILE_TYPE` (`%PDF-` 불일치)<br>② `400 PDF_TEXT_EMPTY`<br>③ `413 FILE_TOO_LARGE` |
 | **T19** | `Y04` `PUT /api/youth/resume` | `Youth A` + 실제 시연 PDF (`이력서_A_강서울_디지털캠페인AE.pdf`) | `200 OK`, `extraction_status === "completed"`, `profile_version === 2`<br>• `matching_json.skills` (`digital_marketing`, `communication` 등) 추출 및 모든 `evidence` 원문 포함 확인<br>• `matching_json.career.declared_total_months === 44` |
 | **T20** | `Y05` `GET /api/youth/main` | `Youth A` (이력서 업로드 후 1차·2차 호출) | `200 OK`, `has_resume === true`<br>• `recommended`: 1~3건 (마감 공고 0건), 1위 = 블렌드엑스 `디지털 캠페인 AE` (`score === 100`, `fit_grade === "high"`)<br>• **TOP 3에만 개인 이력서(경험 제목·`evidence`·역량·자격증) 기반 `match.reason` 존재**, 4위 이하는 `match.reason === null`<br>• DB `match_results` 테이블에 79건 캐시 저장 확인 및 2차 호출 시 캐시 히트(응답 시간 단축) 확인 |
 | **T21** | `Y06` `GET /api/youth/jobs/[jobId]` | • 없는 UUID 조회<br>• `Open Job (BlendX AE)` 조회 | • 없는 UUID: `404 JOB_NOT_FOUND`<br>• `Open Job`: `200 OK`, `match.score === 100`, `match.fit_grade === "high"`, `match.reason` 포함, `can_apply === true` |
@@ -95,7 +97,7 @@
 
 | 코드 | 대상 API | 호출 주체 / 입력 | 기대 HTTP & 검증 포인트 |
 | :---: | :--- | :--- | :--- |
-| **T22** | `Y07` `POST /api/applications` | `Youth A` + `{ job_id: ClosedJobId }` (마감 공고) | `409 POSTING_CLOSED` |
+| **T22** | `Y06` & `Y07` | ① `Youth A` + `{ job_id: ClosedJobId }` (마감 공고)<br>② 미참여 기업 열림 공고(`(주)아크메디코리아`) 상세(`Y06`) & 지원(`Y07`) | ① `409 POSTING_CLOSED`<br>② `Y06`: `company.participation === "non_participating"`, `can_apply === false`, `apply_block_reason === "company_not_participating"`, `external_url`에 실제 외부 채용 링크 포함<br>   `Y07`: **`403 COMPANY_NOT_PARTICIPATING`** |
 | **T23** | `Y07` `POST /api/applications` | `Youth A` + `{ job_id: OpenJobId }` (최초 지원) | `201 Created`, `{ application_id, already_applied: false }`<br>• 지원 후 `Y06` 재조회 시 `applied === true`, `can_apply === false`, `apply_block_reason === "already_applied"` |
 | **T24** | `Y07` `POST /api/applications` | `Youth A` + `{ job_id: OpenJobId }` (**동시 2회 연타 / 재호출**) | **`200 OK`**, `{ application_id: <동일 ID>, already_applied: true }`<br>• DB `applications` 테이블에 `(youth_user_id, job_id)` 행이 정확히 **1건만** 존재하는지 확인 |
 | **T25** | `Y03` → `Y07` (캐시 미스 지원) | `Youth C` 이력서 등록 후 `Y03 PATCH`로 `match_results` 캐시를 비운 직후, `Y05`를 거치지 않고 바로 `Y07`로 `Open Job` 지원 | `201 Created`<br>• 캐시가 비어 있었음에도 실시간 `calculateMatchScore`가 동작해 DB `applications.fit_snapshot.status === "ready"` 및 `score !== null`, `fit_grade !== null`로 저장되는지 확인 |
