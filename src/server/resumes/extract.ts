@@ -145,7 +145,8 @@ export async function extractResumeMatchingJson(rawText: string): Promise<Resume
   const systemPrompt = `You are a strict resume parser for the Seoul Youth Employment Platform ("ITDA").
 Normalize the candidate's resume strictly against our closed taxonomy v1.
 DO NOT hallucinate or infer skills, education, or experience not mentioned in the resume text.
-Every skill and experience item MUST have an 'evidence' string taken verbatim or near-verbatim from the text.
+Extract EVERY matching skill and experience competency explicitly supported by the text (do not omit explicitly stated skills or experiences).
+Every skill and experience item MUST have an 'evidence' string taken verbatim from the text.
 
 [ALLOWED SKILLS (ID: Label)]:
 ${SKILL_TAXONOMY.map((s) => `- ${s.id}: ${s.label} (${s.aliases.join(", ")})`).join("\n")}
@@ -188,7 +189,8 @@ Return JSON in this exact structure:
     body: JSON.stringify({
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
-      temperature: 0.1,
+      temperature: 0,
+      seed: 42,
       messages: [
         { role: "system", content: systemPrompt },
         {
