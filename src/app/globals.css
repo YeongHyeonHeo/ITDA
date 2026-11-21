@@ -114,3 +114,21 @@
 .company-filters .filter-buttons{justify-content:flex-start}
 .company-subsidy-alert{padding:12px 16px;margin:0 0 15px;border-radius:9px;background:#fff0ee;border:1px solid #f2d3d1;color:#a9514d;font-size:13px;line-height:1.6;font-weight:650;word-break:keep-all}
 @media(max-width:760px){.company-job-picker{align-items:stretch;flex-direction:column}.company-job-picker .company-job-select{min-width:0}}
+
+
+/* PRD v1.5 B3 — Signup resume analysis progress (demo only). */
+.resume-analysis-steps{display:grid;gap:12px;text-align:left;margin:22px auto 0;max-width:520px}
+.resume-analysis-step{display:flex;align-items:center;gap:13px;padding:14px 16px;border:1px solid #e5e7ef;background:#f8f9fc;border-radius:11px;min-width:0}
+.resume-analysis-step.is-active{border-color:#e2ad60;background:#fff9ee}
+.resume-analysis-step.is-done{border-color:#cde7d5;background:#f4faf5}
+.resume-analysis-step.is-pending{opacity:.65}
+.resume-analysis-step-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:34px;height:34px;border-radius:50%;font-size:13px;font-weight:800;background:#e8eaf0;color:#70788e}
+.resume-analysis-step.is-active .resume-analysis-step-icon{background:#fae8c9;color:#aa782a}
+.resume-analysis-step.is-done .resume-analysis-step-icon{background:#dcefe1;color:#46885b}
+.resume-analysis-step strong{display:block;font-size:14px;color:#20233a;line-height:1.5}
+.resume-analysis-step small{display:block;font-size:12px;color:#81899d;line-height:1.5;word-break:keep-all}
+.resume-analysis-spinner{display:block;width:17px;height:17px;border:2px solid #d6b377;border-top-color:#9b6e26;border-radius:50%;animation:itda-resume-spin .8s linear infinite}
+.resume-analysis-demo-note{margin:17px auto 2px;max-width:520px;font-size:12px!important;color:#8a90a3;line-height:1.65;word-break:keep-all}
+.modal-actions .btn:disabled{background:#e6e7ec;color:#9aa0af;border-color:#e6e7ec;cursor:progress;filter:none}
+@keyframes itda-resume-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.resume-analysis-spinner{animation:none;border-top-color:#9b6e26}}

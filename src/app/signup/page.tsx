@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, type ChangeEvent, type FormEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import CompanySignupForm from "@/components/CompanySignupForm";
 import JobitdaModal from "@/components/JobitdaModal";
@@ -9,6 +9,7 @@ import {getLocalities} from "@/lib/regions";
 import {routes} from "@/lib/jobitda-routes";
 
 type ModalName="consent"|"duplicate"|"analyzing"|"invalid"|null;
+type ResumeAnalysisStage="reading"|"organizing"|"complete";
 const MAX_RESUME_BYTES=5*1024*1024;
 function SignupInner(){
   const searchParams=useSearchParams();
@@ -18,6 +19,21 @@ function SignupInner(){
   const [file,setFile]=useState<File|null>(null); const [email,setEmail]=useState("");
   const [password,setPassword]=useState(""); const [agreed,setAgreed]=useState(false);
   const [modal,setModal]=useState<ModalName>(null); const [error,setError]=useState("");
+  const [analysisStage,setAnalysisStage]=useState<ResumeAnalysisStage>("reading");
+  const submissionStarted=useRef(false);
+  const isAnalyzing=modal==="analyzing";
+  // 시연 전용 단계 전환입니다. 실제 이력서 분석이나 서버 업로드는 수행하지 않습니다.
+  useEffect(()=>{
+    if(modal!=="analyzing")return;
+    const organizeTimer=window.setTimeout(()=>setAnalysisStage("organizing"),1400);
+    const completeTimer=window.setTimeout(()=>setAnalysisStage("complete"),3400);
+    return ()=>{window.clearTimeout(organizeTimer);window.clearTimeout(completeTimer);};
+  },[modal]);
+  function finishAnalysisDemo(){
+    if(analysisStage!=="complete")return;
+    setModal(null);
+    router.push(routes.youth);
+  }
   const [role,setRole]=useState<"youth"|"company">(searchParams.get("role")==="company"?"company":"youth");
   function toggleCategory(category:string){
     setError("");
@@ -33,7 +49,9 @@ function SignupInner(){
     // PDF 본문이나 비밀번호는 로컬 스토리지 및 서버에 저장하지 않습니다.
   }
   function submit(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();setError("");
+    event.preventDefault();
+    if(submissionStarted.current)return;
+    setError("");
     if(!agreed){setModal("consent");return;}
     if(!name.trim()||!birth||!province||!district||!chosen.length||!email.includes("@")||password.length<8){
       setError("이름·생년월일·주소·희망직무·이메일과 8자 이상 비밀번호를 확인해주세요.");setModal("invalid");return;
@@ -43,8 +61,13 @@ function SignupInner(){
     }
     const profile:DemoProfile={name:name.trim(),birth,province,district,categories:chosen,email:email.trim(),resumeName:file?.name??null};
     // 브라우저 세션에 화면 시연용으로만 입력값을 보관합니다. 실사용 개인정보 입력 금지.
+    submissionStarted.current=true;
     writeDemoProfile(profile);
-    if(file){setModal("analyzing");return;}
+    if(file){
+      setAnalysisStage("reading");
+      setModal("analyzing");
+      return;
+    }
     router.push(routes.youth);
   }
   return <><SiteHeader/><main className="page-shell narrow-shell signup-shell">
@@ -68,12 +91,32 @@ function SignupInner(){
       <label className="field-group"><span className="form-label">비밀번호</span><input className="field" type="password" autoComplete="new-password" placeholder="8자 이상 (시연용 가상 비밀번호)" value={password} onChange={e=>setPassword(e.target.value)}/><span className="form-hint">8자 이상 · 브라우저 저장/서버 전송 안 함</span></label>
       <label className="consent-box"><input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}/><span><strong>[필수] 개인정보 제공 동의</strong><small>시연: 실제 기업에 정보가 전달되지 않습니다. 정식 서비스에서는 동의한 항목만 지원 기업에 전달되도록 별도 구현이 필요합니다.</small></span></label>
       {error&&<p className="inline-error" role="alert">{error}</p>}
-      <button className="btn btn-orange btn-wide submit-btn" type="submit">가입하고 맞춤 공고 보기</button>
+      <button className="btn btn-orange btn-wide submit-btn" type="submit" disabled={isAnalyzing}>가입하고 맞춤 공고 보기</button>
     </form>}
     {modal==="consent"&&<JobitdaModal title="개인정보 제공 동의를 확인해주세요" message={"지원한 기업에 이름·이메일·이력서 등을 전달하려면 동의가 필요합니다.\n동의 후 가입을 진행해주세요."} onClose={()=>setModal(null)}/>}
     {modal==="duplicate"&&<JobitdaModal title="이미 가입된 이메일이에요" message={`${email} 으로 가입된 계정이 있습니다. 로그인하거나 다른 이메일로 가입해주세요. (시연용 예시)`} onClose={()=>setModal(null)}/>}
     {modal==="invalid"&&<JobitdaModal title="입력 정보를 확인해주세요" message="필수 항목을 작성한 후 다시 시도해주세요." onClose={()=>setModal(null)}/>}
-    {modal==="analyzing"&&<JobitdaModal title="맞춤 공고를 분석하고 있어요" message={"AI로 작성하신 개인정보 및 이력서를 분석하고 있습니다.\n약 20~40초 소요될 수 있습니다.\n\n※ 이 화면은 시연용이며 실제 AI 분석은 실행되지 않습니다."} primaryLabel="닫기" onClose={()=>{setModal(null);router.push(routes.youth);}}/>}
+    {modal==="analyzing"&&<JobitdaModal
+      title={analysisStage==="complete"?"이력서 처리 단계 확인 완료":"이력서 처리 과정을 보여드릴게요"}
+      message={analysisStage==="complete"?"시연용 처리 단계가 끝났어요. 맞춤 공고 화면으로 이동할 수 있습니다.":"PDF 이력서 처리 과정을 단계별로 표시하고 있어요."}
+      primaryLabel={analysisStage==="complete"?"맞춤 공고 보기":"처리 중..."}
+      primaryDisabled={analysisStage!=="complete"}
+      dismissible={false}
+      onPrimary={finishAnalysisDemo}
+      onClose={finishAnalysisDemo}
+    >
+      <div className="resume-analysis-steps" role="status" aria-live="polite" aria-atomic="true">
+        <div className={`resume-analysis-step ${analysisStage==="reading"?"is-active":"is-done"}`}>
+          <span className="resume-analysis-step-icon" aria-hidden="true">{analysisStage==="reading"?<span className="resume-analysis-spinner"/>:"✓"}</span>
+          <div><strong>1. 텍스트 읽는 중</strong><small>{analysisStage==="reading"?"PDF 텍스트 추출 단계를 시연하고 있어요.":"시연 단계 완료"}</small></div>
+        </div>
+        <div className={`resume-analysis-step ${analysisStage==="organizing"?"is-active":analysisStage==="complete"?"is-done":"is-pending"}`}>
+          <span className="resume-analysis-step-icon" aria-hidden="true">{analysisStage==="organizing"?<span className="resume-analysis-spinner"/>:analysisStage==="complete"?"✓":"2"}</span>
+          <div><strong>2. 역량 정리 중</strong><small>{analysisStage==="organizing"?"관심 직무와 역량 분석 단계를 시연하고 있어요.":analysisStage==="complete"?"시연 단계 완료":"텍스트 읽기 다음에 진행됩니다."}</small></div>
+        </div>
+      </div>
+      <p className="resume-analysis-demo-note">※ 현재는 시연 화면입니다. PDF 업로드·텍스트 추출·AI 분석은 실제 실행되지 않으며, 위 진행 상태는 가상으로 표시됩니다.</p>
+    </JobitdaModal>}
   </main></>;
 }
 
