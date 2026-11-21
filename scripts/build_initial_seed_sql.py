@@ -123,9 +123,9 @@ def employment_kind(raw: Optional[str]) -> str:
     s = re.sub(r"\s", "", raw or "")
     if not s:
         return "unknown"
-    if re.search(r"전환|인턴후정규|계약후정규", s):
+    if re.search(r"전환|인턴후정규|계약후정규|채용형", s):
         return "conversion"
-    if "/" in s and re.search(r"정규", s) and re.search(r"계약|인턴|무관|파견|기간제", s):
+    if re.search(r"정규", s) and re.search(r"계약|인턴|무관|파견|기간제", s):
         return "unknown"
     if re.search(r"수습", s) and re.search(r"정규|정함이없", s):
         return "probation"

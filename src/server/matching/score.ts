@@ -199,7 +199,8 @@ export function calculateMatchScore(params: {
 
   const allJobSkillIds = [...reqSkillIds, ...prefSkillIds];
   const matchedSkillIds = allJobSkillIds.filter((id) => youthSkillIds.has(id));
-  const missingSkillIds = reqSkillIds.filter((id) => !youthSkillIds.has(id));
+  // 필수 + 우대 요구 스킬 중 이력서에서 확인되지 않은 항목을 모두 추가 확인 항목으로 제공
+  const missingSkillIds = allJobSkillIds.filter((id) => !youthSkillIds.has(id));
 
   const totalSkillScore = round1(reqScore + prefScore);
   const skillsPart: ScorePart = {
