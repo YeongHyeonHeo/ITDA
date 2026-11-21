@@ -55,11 +55,20 @@ npm start
 | Y05 | `GET /api/youth/main` | 구현 및 로컬 E2E 검증 완료 (블렌드엑스 AE 100점 `high` 1위 확인) |
 | Y06 | `GET /api/youth/jobs/{jobId}` | 구현 및 로컬 E2E 검증 완료 |
 
-**Track 2 (지원·기업)**: `A01`, `Y07`, `Y08`, `C01`, `C02`, `F01` — 미구현.
+**Track 2 (지원·기업)** — 구현 및 로컬 E2E 검증 완료 (실 Supabase 23/23 통과, `typecheck`·`lint`·`build` 통과). 코드는 리뷰 PR 머지 대기 상태이며 `feat/track2-*` 브랜치에 있습니다.
 
-**공통 모듈**: `src/lib/supabase/admin.ts`, `src/server/auth/` (암호화·인증·프로필), `src/server/policy/evaluate.ts` (만 18~39세, 6개월 경계 나이 추가 확인), `src/server/matching/score.ts` (직무20·역량40·경험25·경력15, 화면은 `fit_grade` 3단계), `src/server/resumes/extract.ts` (PDF 추출·정제).
+| API | 경로 | 상태 |
+|---|---|---|
+| A01 | `GET /api/me` | 구현 및 로컬 E2E 검증 완료 (role·onboarding·company_ids) |
+| Y07 | `POST /api/applications` | 구현 및 로컬 E2E 검증 완료 (최초 201 / 중복 200, 온보딩·마감(KST)·이력서 가드, 지원 시점 스냅샷 고정) |
+| Y08 | `GET /api/youth/applications` | 구현 및 로컬 E2E 검증 완료 (본인 지원 내역, 당시 스냅샷) |
+| C01 | `GET /api/company/overview` | 구현 및 로컬 E2E 검증 완료 (자사 공고·지원자 수) |
+| C02 | `GET /api/company/jobs/{jobId}/applicants` | 구현 및 로컬 E2E 검증 완료 (정책 필터, 점수 DESC 정렬, counts 불변식) |
+| F01 | `GET /api/applications/{applicationId}/resume` | 구현 및 로컬 E2E 검증 완료 (요청마다 권한 재검증, 비공개 Storage PDF 스트리밍) |
 
-**알려진 미완료**: `match_results` 캐시, 온보딩 가드(`ONBOARDING_REQUIRED`), PDF 시그니처·텍스트 없음 검증, 추천 이유 LLM 작성, 에러코드 명세 정합, 로그인·화면 UI.
+**공통 모듈**: `src/lib/supabase/admin.ts`, `src/server/auth/` (암호화·인증·프로필), `src/server/policy/evaluate.ts` (만 18~39세, 6개월 경계 나이 추가 확인), `src/server/matching/score.ts` (직무20·역량40·경험25·경력15, 화면은 `fit_grade` 3단계), `src/server/resumes/extract.ts` (PDF 추출·정제), `src/server/applications/snapshot.ts` (지원 스냅샷 매퍼, `match_results` 캐시 → `fit_snapshot`).
+
+**알려진 미완료**: `match_results` 캐시 채우기(Track 1 Y05 연동 전 `fit_snapshot`은 `pending` 폴백), PDF 시그니처·텍스트 없음 검증, 추천 이유 LLM 작성, 에러코드 명세 정합, 로그인·화면 UI. `CompanySummary.industry`는 전용 컬럼이 없어 `companies.business_desc`로 대체 중.
 
 ## 개발 분담
 
