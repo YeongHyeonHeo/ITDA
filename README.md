@@ -50,10 +50,10 @@ npm start
 | API | 경로 | 상태 |
 |---|---|---|
 | H01 | `GET /api/health` | 동작 |
-| Y01~Y03 | `/api/youth/profile` (POST/GET/PATCH) | 구현. Y01·Y02 로컬 E2E 확인 |
-| Y04 | `PUT /api/youth/resume` | 구현, E2E 미검증 |
-| Y05 | `GET /api/youth/main` | 구현, E2E 미검증 (DB GRANT 적용 필요) |
-| Y06 | `GET /api/youth/jobs/{jobId}` | 구현, E2E 미검증 |
+| Y01~Y03 | `/api/youth/profile` (POST/GET/PATCH) | 구현 및 로컬 E2E 검증 완료 |
+| Y04 | `PUT /api/youth/resume` | 구현 및 실 PDF + OpenAI 로컬 E2E 검증 완료 |
+| Y05 | `GET /api/youth/main` | 구현 및 로컬 E2E 검증 완료 (블렌드엑스 AE 100점 `high` 1위 확인) |
+| Y06 | `GET /api/youth/jobs/{jobId}` | 구현 및 로컬 E2E 검증 완료 |
 
 **Track 2 (지원·기업)**: `A01`, `Y07`, `Y08`, `C01`, `C02`, `F01` — 미구현.
 

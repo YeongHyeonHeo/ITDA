@@ -1,6 +1,6 @@
 # 서울잇다 프론트·백엔드 공유 API 명세 v1
 
-> **현재 구현 상태 (Track 1):** `H01`, `Y01`~`Y06`은 코드 구현됨 (Y01·Y02만 로컬 E2E 검증, Y03~Y06은 미검증). `A01`, `Y07`, `Y08`, `C01`, `C02`, `F01`(Track 2)은 **미구현(계약 정본)**입니다.
+> **현재 구현 상태 (Track 1):** `H01`, `Y01`~`Y06`은 코드 구현 및 실 Supabase + OpenAI + 시연 이력서 PDF 기준 로컬 E2E 검증 완료(16/16 통과). `A01`, `Y07`, `Y08`, `C01`, `C02`, `F01`(Track 2)은 **미구현(계약 정본)**입니다.
 > - **TypeScript 타입 정본:** [api.ts](file:///Users/haing/Development/Seoul_Hackton/src/contracts/api.ts), [matching.ts](file:///Users/haing/Development/Seoul_Hackton/src/contracts/matching.ts), [taxonomy.ts](file:///Users/haing/Development/Seoul_Hackton/src/contracts/taxonomy.ts)
 > - **가상 응답(Mock):** [fixtures.ts](file:///Users/haing/Development/Seoul_Hackton/src/contracts/fixtures.ts) (`mainFixture` 등 — 프론트 단독 개발 시 import 가능)
 > - **매칭·배점 규칙:** [matching-spec.md](file:///Users/haing/Development/Seoul_Hackton/docs/matching-spec.md)
