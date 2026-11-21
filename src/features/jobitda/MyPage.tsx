@@ -33,7 +33,7 @@ export default function MyPage(){
       <dl className="profile-dl"><dt>이름</dt><dd>{profile.name}</dd><dt>생년월일</dt><dd>{profile.birth} (만 {age??"?"}세)</dd><dt>실거주지 주소</dt><dd>{formatRegion(profile.province,profile.district)}</dd><dt>희망직무</dt><dd>{profile.categories.join(", ")}</dd><dt>이메일</dt><dd>{profile.email} (변경 불가)</dd><dt>기본요건</dt><dd><span className={`pill ${precheck.tone}`}>{precheck.label}</span> <span className="small-text">일부 정책의 연령·거주 조건을 가정한 시연용 예비진단</span></dd></dl>}
       {saved&&<p className="alert alert-success">가상 프로필이 현재 브라우저 세션에 저장됐어요.</p>}
     </section>
-    <section className="panel mypage-card mypage-resume-card"><div className="section-card-heading"><h2>이력서</h2><label htmlFor="resume-reupload" className="btn btn-orange">이력서 다시 올리기</label><input id="resume-reupload" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={pickResume}/></div>
+    <section className="panel mypage-card mypage-resume-card"><div className="section-card-heading"><h2>이력서</h2><label htmlFor="resume-reupload" className="btn btn-orange">{profile.resumeName?"이력서 다시 올리기":"이력서 올리기"}</label><input id="resume-reupload" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={pickResume}/></div>
       <div className="file-summary">📄　<strong>{profile.resumeName??"등록된 이력서가 없습니다"}</strong><span className="small-text">{profile.resumeName?"시연용 파일명":"파일 업로드 전"}</span></div>
       {fileError&&<p className="inline-error" role="alert">{fileError}</p>}
       <h3 className="profile-subheading">AI 분석 결과 <span className="pill pill-gray">읽기 전용</span></h3>
