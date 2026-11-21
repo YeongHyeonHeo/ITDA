@@ -202,9 +202,13 @@ PDF 이력서를 업로드하고 텍스트 추출 → Storage 저장 → `resume
 ---
 
 ### Y06. `GET /api/youth/jobs/{jobId}` — 청년
-- **200 OK (`JobDetailResponse`)**: `JobCard` + `{ position_raw, preferred, employment_type_raw, career_req, education_req, salary, company_industry, crawled_at, matching_json }`.
-  - 공고 상세(`S4-1`)의 `일치 역량`과 `추가 확인 항목`은 `match.breakdown.{skills,experience}`의 `matched_ids`(교집합)와 `missing_ids`(차집합)를 그대로 표시합니다.
-  - 원문에 없는 항목은 `null`로 반환하며 임의 생성하지 않습니다. `source`(크롤링 상세 URL), `raw_text` 등 크롤링 내부 메타는 응답에서 제외합니다.
+- **200 OK (`JobDetailResponse`)**: `JobCard` + `{ position_raw, preferred, employment_type_raw, career_req, education_req, salary, company_industry, crawled_at, matching_json, work_address, work_gu, holiday_type, posted_at, headcount, work_hours, selection_process, documents, benefits, company_homepage }`.
+  - 공고 상세(`S4-1`)에서 `match.status === "ready"`이고 `breakdown`이 있을 때 개인화 항목을 표시합니다. `일치 역량`은 `match.breakdown.{skills,experience}.matched_ids`, `추가 확인 항목`은 같은 경로의 `missing_ids`를 사용합니다. ID는 `src/contracts/taxonomy.ts`의 이름으로 변환합니다.
+  - `missing_ids`는 공고 요구 중 이력서에서 확인되지 않은 항목이며 역량 미보유를 단정하지 않습니다. `match.needs_check`는 정보 부족 관련 안내 문구로 별도 표시하고, 정책 조건인 `policy`와 구분합니다.
+  - `breakdown === null`이면 두 목록을 빈 결과로 단정하지 않고 업로드/분석 상태 안내를 표시합니다. 현재 분석 실패 이력서가 `no_resume`로 반환되는 기존 문제는 별도 수정 대상입니다.
+  - 원문에 없는 항목은 `null`로 반환하며 임의 생성하지 않습니다. 원문 링크는 `external_url`로 제공합니다.
+  - 상세 표시: 모집분야 `position_raw`, 자격요건 `career_req`·`education_req`, 우대사항 `preferred`, 근무조건 `employment_type_raw`·`salary`·`work_address`·`work_hours`·`holiday_type`, 복리후생 `benefits`, 모집인원 `headcount`, 전형절차 `selection_process`, 제출서류 `documents`.
+  - `notes`·`raw_text`는 상세 응답에서 제외합니다. `raw_text`는 서버 내부 추천 근거 생성에만 사용합니다. 담당 업무 전문·통합 자격요건은 현재 별도 DB 컬럼이 없으므로 `position_raw`나 AI 정제 결과를 전문으로 대신 표시하지 않습니다.
 - **오류**: `404 JOB_NOT_FOUND` (없는 ID 또는 `match_status !== 'verified'`).
 
 ---
