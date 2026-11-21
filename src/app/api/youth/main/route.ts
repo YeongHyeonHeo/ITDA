@@ -3,7 +3,14 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/server/auth/require-user";
 import { createAdminClient, jsonError } from "@/lib/supabase/admin";
 import { getDecryptedYouthProfile } from "@/server/auth/youth-profile";
-import { buildPersonalizedReason, calculateMatchScore } from "@/server/matching/score";
+import {
+  buildPersonalizedReason,
+  calculateMatchScore,
+  fromCachedMatchRow,
+  isMatchCacheValid,
+  toMatchResultRow,
+  type CachedMatchResultRow,
+} from "@/server/matching/score";
 import { evaluateJobPolicy } from "@/server/policy/evaluate";
 import { getEvaluatedMonthKST, getTodayKST } from "@/server/auth/crypto";
 import { TAXONOMY_VERSION } from "@/contracts/taxonomy";
@@ -72,9 +79,24 @@ export async function GET(request: Request) {
 
   const evaluatedMonth = getEvaluatedMonthKST();
   const todayKST = getTodayKST();
-  const hasResume = profile.resume?.matching_json != null;
+  const resumeJson = profile.resume?.matching_json || null;
+  const hasResume = resumeJson != null;
 
-  // 3. Transform to JobCards with dynamic score calculation
+  // 2-1. Fetch existing match_results cache rows for this youth user
+  const cacheMap = new Map<string, CachedMatchResultRow>();
+  const toUpsertMap = new Map<string, CachedMatchResultRow>();
+
+  if (hasResume) {
+    const { data: cachedRows } = await admin
+      .from("match_results")
+      .select("*")
+      .eq("youth_user_id", userId);
+    for (const r of (cachedRows || []) as CachedMatchResultRow[]) {
+      cacheMap.set(r.job_id, r);
+    }
+  }
+
+  // 3. Transform to JobCards with cache hit check or dynamic score calculation
   const allCards: JobCard[] = [];
 
   for (const row of jobsData || []) {
@@ -125,15 +147,36 @@ export async function GET(request: Request) {
       applyBlockReason = "resume_required";
     }
 
-    const match = calculateMatchScore({
-      desiredCategories: profile.desired_categories,
-      resume: profile.resume?.matching_json || null,
-      job: row.matching_json as JobMatchingJson | null,
-      profileVersion: profile.profile_version,
-      jobVersion: row.job_version || 1,
-      taxonomyVersion: TAXONOMY_VERSION,
-      evaluatedMonth,
-    });
+    const jobVersion = row.job_version || 1;
+    const cachedRow = cacheMap.get(row.id);
+    let match;
+
+    if (
+      hasResume &&
+      isMatchCacheValid(cachedRow, {
+        profileVersion: profile.profile_version,
+        jobVersion,
+        taxonomyVersion: TAXONOMY_VERSION,
+        evaluatedMonth,
+      })
+    ) {
+      // Cache hit: restore score/breakdown, attach reason only after TOP 3 selection
+      match = { ...fromCachedMatchRow(cachedRow), reason: null };
+    } else {
+      match = calculateMatchScore({
+        desiredCategories: profile.desired_categories,
+        resume: resumeJson,
+        job: row.matching_json as JobMatchingJson | null,
+        profileVersion: profile.profile_version,
+        jobVersion,
+        taxonomyVersion: TAXONOMY_VERSION,
+        evaluatedMonth,
+      });
+      const rowToSave = toMatchResultRow({ youthUserId: userId, jobId: row.id, match });
+      if (rowToSave) {
+        toUpsertMap.set(row.id, rowToSave);
+      }
+    }
 
     const policy = evaluateJobPolicy({
       age: profile.age,
@@ -188,7 +231,6 @@ export async function GET(request: Request) {
   }
 
   // 5. Select recommended TOP 3 (PRD v1.4 D-19) & generate personalized reason ONLY for TOP 3
-  const resumeJson = profile.resume?.matching_json || null;
   const reasonByJobId = new Map<string, string>();
   let recommended: JobCard[] = [];
 
@@ -198,18 +240,56 @@ export async function GET(request: Request) {
       .slice(0, 3);
 
     recommended = top3Candidates.map((card) => {
-      const reason = card.match.breakdown
-        ? buildPersonalizedReason({ resume: resumeJson, breakdown: card.match.breakdown })
-        : null;
-      if (reason) reasonByJobId.set(card.job_id, reason);
+      const cachedRow = cacheMap.get(card.job_id);
+      const cachedReason =
+        isMatchCacheValid(cachedRow, {
+          profileVersion: profile.profile_version,
+          jobVersion: card.match.job_version,
+          taxonomyVersion: TAXONOMY_VERSION,
+          evaluatedMonth,
+        }) && cachedRow.reason
+          ? cachedRow.reason
+          : null;
+
+      const reason =
+        cachedReason ||
+        (card.match.breakdown
+          ? buildPersonalizedReason({ resume: resumeJson, breakdown: card.match.breakdown })
+          : null);
+
+      const updatedMatch = {
+        ...card.match,
+        reason,
+      };
+
+      if (reason) {
+        reasonByJobId.set(card.job_id, reason);
+        if (!cachedReason) {
+          const rowWithReason = toMatchResultRow({
+            youthUserId: userId,
+            jobId: card.job_id,
+            match: updatedMatch,
+          });
+          if (rowWithReason) {
+            toUpsertMap.set(card.job_id, rowWithReason);
+          }
+        }
+      }
+
       return {
         ...card,
-        match: {
-          ...card.match,
-          reason,
-        },
+        match: updatedMatch,
       };
     });
+
+    if (toUpsertMap.size > 0) {
+      const { error: cacheUpsertErr } = await admin
+        .from("match_results")
+        .upsert(Array.from(toUpsertMap.values()), { onConflict: "youth_user_id,job_id" });
+      if (cacheUpsertErr) {
+        console.error("Failed to upsert match_results cache:", cacheUpsertErr);
+      }
+    }
   }
 
   // 6. All postings: only TOP 3 recommended jobs carry match.reason; all others have reason = null
