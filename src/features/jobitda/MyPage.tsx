@@ -1,54 +1,113 @@
 "use client";
 import Link from "next/link";
-import {useEffect,useState,type ChangeEvent} from "react";
-import {useRouter} from "next/navigation";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import JobitdaModal from "@/components/JobitdaModal";
-import DemoNotice from "@/components/DemoNotice";
-import {categories,defaultProfile,readDemoProfile,writeDemoProfile,readDemoApplied,resetDemoState,ageAtKst,demoBasicPrecheck,jobs,type DemoProfile} from "@/lib/demo-data";
-import {getLocalities,formatRegion} from "@/lib/regions";
-import {routes} from "@/lib/jobitda-routes";
+import { getLocalities, formatRegion, PROVINCES } from "@/lib/regions";
+import { CATEGORY_OPTIONS, categoryLabel } from "@/lib/categories";
+import { routes } from "@/lib/jobitda-routes";
+import { jobitdaApi, JobitdaApiError, resumePdfPath } from "@/lib/jobitda-api";
+import { policyText, policyTone, gradeLabel, skillLabel } from "@/lib/jobitda-format";
+import type { ProfileResponse, ApplicationSummary } from "@/contracts/api";
+import type { CategoryId } from "@/contracts/matching";
 
-type ModalName="delete"|"deleted"|"resume"|"invalid"|null;
-export default function MyPage(){
-  const router=useRouter();const [profile,setProfile]=useState<DemoProfile>(defaultProfile);
-  const [draft,setDraft]=useState<DemoProfile>(defaultProfile);const [editing,setEditing]=useState(false);
-  const [appliedIds,setAppliedIds]=useState<string[]>([]);const [modal,setModal]=useState<ModalName>(null);
-  const [saved,setSaved]=useState(false);const [fileError,setFileError]=useState("");
-  useEffect(()=>{queueMicrotask(()=>{const item=readDemoProfile();setProfile(item);setDraft(item);setAppliedIds(readDemoApplied());});},[]);
-  const age=ageAtKst(profile.birth);
-  const precheck=demoBasicPrecheck(profile);
-  function updateDraft(key:keyof DemoProfile,value:string){setDraft(p=>({...p,[key]:value}));}
-  function toggleCategory(value:string){setDraft(prev=>({...prev,categories:prev.categories.includes(value)?prev.categories.filter(c=>c!==value):prev.categories.length<3?[...prev.categories,value]:prev.categories}));}
-  function save(){if(!draft.name.trim()||!draft.birth||!draft.province||!draft.district||!draft.categories.length){setModal("invalid");return;}setProfile(draft);writeDemoProfile(draft);setEditing(false);setSaved(true);}
-  function pickResume(event:ChangeEvent<HTMLInputElement>){
-    const file=event.target.files?.[0];if(!file)return;
-    if(!file.name.toLowerCase().endsWith(".pdf")||(file.type!=="application/pdf"&&file.type!=="")){setFileError("PDF 파일만 선택해주세요.");return;}
-    if(file.size>5*1024*1024){setFileError("5MB 이하 PDF 파일을 선택해주세요.");return;}
-    const next={...profile,resumeName:file.name};setProfile(next);setDraft(next);writeDemoProfile(next);setFileError("");setModal("resume");
+type Draft = { name: string; birth_date: string; province: string; district: string; categories: CategoryId[] };
+type ModalName = "invalid" | "error" | "logout" | null;
+const MAX = 5 * 1024 * 1024;
+
+export default function MyPage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [apps, setApps] = useState<ApplicationSummary[]>([]);
+  const [loading, setLoading] = useState(true); const [errMsg, setErrMsg] = useState("");
+  const [editing, setEditing] = useState(false); const [draft, setDraft] = useState<Draft | null>(null);
+  const [saved, setSaved] = useState(false); const [saving, setSaving] = useState(false);
+  const [fileError, setFileError] = useState(""); const [fileBusy, setFileBusy] = useState(false);
+  const [modal, setModal] = useState<ModalName>(null); const [modalMsg, setModalMsg] = useState("");
+
+  // 이벤트 핸들러(이력서 재업로드)에서 쓰는 재조회
+  async function refresh() {
+    const [p, a] = await Promise.all([jobitdaApi.getProfile(), jobitdaApi.applications()]);
+    setProfile(p); setApps(a.applications);
   }
-  return <><SiteHeader role="youth" name={profile.name}/><main className="page-shell mypage-shell"><h1 className="page-title">마이페이지</h1>
-    <div className="mypage-stack"><section className="panel mypage-card"><div className="section-card-heading"><h2>내 정보</h2>{editing?<div className="action-pair"><button className="btn btn-ghost" type="button" onClick={()=>{setDraft(profile);setEditing(false);}}>취소</button><button className="btn btn-orange" type="button" onClick={save}>저장</button></div>:<button className="btn btn-orange" type="button" onClick={()=>{setDraft({...profile,province:"서울특별시",district:profile.province==="서울특별시"?profile.district:""});setEditing(true);setSaved(false);}}>정보 수정</button>}</div>
-      {editing?<div className="mypage-edit"><label className="field-group"><span className="form-label">이름</span><input className="field" value={draft.name} onChange={e=>updateDraft("name",e.target.value)}/></label><label className="field-group"><span className="form-label">생년월일</span><input className="field" type="date" value={draft.birth} onChange={e=>updateDraft("birth",e.target.value)}/></label><div className="field-group"><span className="form-label">실거주지 주소 (서울특별시 / 자치구)</span><div className="input-row"><select className="field" aria-label="서울특별시 고정" value="서울특별시" disabled><option value="서울특별시">서울특별시</option></select><select className="field" aria-label="서울특별시 자치구 선택" value={draft.district} onChange={e=>updateDraft("district",e.target.value)} disabled={!draft.province}><option value="">자치구 선택</option>{getLocalities("서울특별시").map(d=><option value={d} key={d}>{d}</option>)}</select></div></div><div className="field-group"><p className="form-label">희망직무 최대 3개</p><div className="chip-row">{categories.map(c=><button key={c} type="button" className={`chip ${draft.categories.includes(c)?"is-selected":""}`} onClick={()=>toggleCategory(c)}>{c}</button>)}</div></div><p className="form-hint">이메일은 이 화면에서 변경할 수 없어요.</p></div>:
-      <dl className="profile-dl"><dt>이름</dt><dd>{profile.name}</dd><dt>생년월일</dt><dd>{profile.birth} (만 {age??"?"}세)</dd><dt>실거주지 주소</dt><dd>{formatRegion(profile.province,profile.district)}</dd><dt>희망직무</dt><dd>{profile.categories.join(", ")}</dd><dt>이메일</dt><dd>{profile.email} (변경 불가)</dd><dt>기본요건</dt><dd><span className={`pill ${precheck.tone}`}>{precheck.label}</span> <span className="small-text">일부 정책의 연령·거주 조건을 가정한 시연용 예비진단</span></dd></dl>}
-      {saved&&<p className="alert alert-success">가상 프로필이 현재 브라우저 세션에 저장됐어요.</p>}
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [p, a] = await Promise.all([jobitdaApi.getProfile(), jobitdaApi.applications()]);
+        if (alive) { setProfile(p); setApps(a.applications); setLoading(false); }
+      } catch (err) {
+        if (!alive) return;
+        if (err instanceof JobitdaApiError) {
+          if (err.status === 401) { router.replace(routes.login); return; }
+          if (err.code === "ONBOARDING_REQUIRED") { router.replace(routes.signup); return; }
+          setErrMsg(err.message);
+        } else setErrMsg("내 정보를 불러오지 못했어요.");
+        setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [router]);
+
+  function startEdit() {
+    if (!profile) return;
+    setDraft({ name: profile.name, birth_date: profile.birth_date, province: profile.address.sido, district: profile.address.sigungu, categories: profile.desired_categories });
+    setEditing(true); setSaved(false);
+  }
+  function toggleCategory(id: CategoryId) {
+    setDraft(d => d && ({ ...d, categories: d.categories.includes(id) ? d.categories.filter(c => c !== id) : d.categories.length < 3 ? [...d.categories, id] : d.categories }));
+  }
+  async function save() {
+    if (!draft) return;
+    if (!draft.name.trim() || !draft.birth_date || !draft.province || !draft.district || !draft.categories.length) { setModal("invalid"); return; }
+    setSaving(true);
+    try {
+      const updated = await jobitdaApi.updateProfile({ name: draft.name.trim(), birth_date: draft.birth_date, address: { sido: draft.province, sigungu: draft.district }, desired_categories: draft.categories });
+      setProfile(updated); setEditing(false); setSaved(true);
+    } catch (err) {
+      setModalMsg(err instanceof JobitdaApiError ? err.message : "저장에 실패했어요."); setModal("error");
+    } finally { setSaving(false); }
+  }
+  async function pickResume(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf") || (file.type !== "application/pdf" && file.type !== "")) { setFileError("PDF 파일만 선택해주세요."); return; }
+    if (file.size > MAX) { setFileError("5MB 이하 PDF 파일을 선택해주세요."); return; }
+    setFileError(""); setFileBusy(true);
+    try { await jobitdaApi.uploadResume(file); await refresh(); }
+    catch (err) { setModalMsg(err instanceof JobitdaApiError ? err.message : "이력서 업로드에 실패했어요."); setModal("error"); }
+    finally { setFileBusy(false); event.target.value = ""; }
+  }
+  async function logout() {
+    const { createClient } = await import("@/lib/supabase/client");
+    try { await createClient().auth.signOut(); } catch { }
+    router.push("/");
+  }
+
+  if (loading) return <><SiteHeader role="youth" /><main className="page-shell mypage-shell"><div className="panel">내 정보를 불러오는 중이에요...</div></main></>;
+  if (errMsg || !profile) return <><SiteHeader role="youth" /><main className="page-shell mypage-shell"><div className="panel"><h1>불러오지 못했어요</h1><p>{errMsg}</p><button className="btn btn-orange" onClick={() => location.reload()}>다시 시도</button></div></main></>;
+
+  const resume = profile.resume;
+  const mj = resume?.matching_json ?? null;
+  return <><SiteHeader role="youth" name={profile.name} /><main className="page-shell mypage-shell"><h1 className="page-title">마이페이지</h1>
+    <div className="mypage-stack"><section className="panel mypage-card"><div className="section-card-heading"><h2>내 정보</h2>{editing ? <div className="action-pair"><button className="btn btn-ghost" type="button" onClick={() => setEditing(false)}>취소</button><button className="btn btn-orange" type="button" onClick={save} disabled={saving}>{saving ? "저장 중..." : "저장"}</button></div> : <button className="btn btn-orange" type="button" onClick={startEdit}>정보 수정</button>}</div>
+      {editing && draft ? <div className="mypage-edit"><label className="field-group"><span className="form-label">이름</span><input className="field" value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label><label className="field-group"><span className="form-label">생년월일</span><input className="field" type="date" value={draft.birth_date} onChange={e => setDraft({ ...draft, birth_date: e.target.value })} /></label><div className="field-group"><span className="form-label">실거주지 주소 (시·도 / 시·군·구)</span><div className="input-row"><select className="field" aria-label="시·도 선택" value={draft.province} onChange={e => setDraft({ ...draft, province: e.target.value, district: "" })}>{PROVINCES.map(p => <option value={p} key={p}>{p}</option>)}</select><select className="field" aria-label="시·군·구 선택" value={draft.district} onChange={e => setDraft({ ...draft, district: e.target.value })} disabled={!draft.province}><option value="">시·군·구 선택</option>{getLocalities(draft.province).map(d => <option value={d} key={d}>{d}</option>)}</select></div></div><div className="field-group"><p className="form-label">희망직무 최대 3개</p><div className="chip-row">{CATEGORY_OPTIONS.map(o => <button key={o.id} type="button" className={`chip ${draft.categories.includes(o.id) ? "is-selected" : ""}`} onClick={() => toggleCategory(o.id)}>{o.label}</button>)}</div></div><p className="form-hint">이메일은 이 화면에서 변경할 수 없어요.</p></div> :
+        <dl className="profile-dl"><dt>이름</dt><dd>{profile.name}</dd><dt>생년월일</dt><dd>{profile.birth_date} (만 {profile.age}세)</dd><dt>실거주지 주소</dt><dd>{formatRegion(profile.address.sido, profile.address.sigungu)}</dd><dt>희망직무</dt><dd>{profile.desired_categories.map(categoryLabel).join(", ")}</dd><dt>이메일</dt><dd>{profile.email} (변경 불가)</dd><dt>기본요건</dt><dd><span className={`pill ${policyTone(profile.youth_policy.status)}`}>{policyText(profile.youth_policy.status)}</span> <span className="small-text">{profile.youth_policy.disclaimer}</span></dd></dl>}
+      {saved && <p className="alert alert-success">프로필이 저장됐어요.</p>}
     </section>
-    <section className="panel mypage-card mypage-resume-card"><div className="section-card-heading"><h2>이력서</h2><label htmlFor="resume-reupload" className="btn btn-orange">이력서 다시 올리기</label><input id="resume-reupload" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={pickResume}/></div>
-      <div className="file-summary">📄　<strong>{profile.resumeName??"등록된 이력서가 없습니다"}</strong><span className="small-text">{profile.resumeName?"시연용 파일명":"파일 업로드 전"}</span></div>
-      {fileError&&<p className="inline-error" role="alert">{fileError}</p>}
+    <section className="panel mypage-card mypage-resume-card"><div className="section-card-heading"><h2>이력서</h2><label htmlFor="resume-reupload" className="btn btn-orange">{fileBusy ? "분석 중..." : "이력서 다시 올리기"}</label><input id="resume-reupload" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={pickResume} disabled={fileBusy} /></div>
+      <div className="file-summary">📄　<strong>{resume?.filename ?? "등록된 이력서가 없습니다"}</strong><span className="small-text">{resume ? (resume.extraction_status === "completed" ? "AI 분석 완료" : resume.extraction_status === "failed" ? "분석 실패 · 재업로드 권장" : "분석 처리 중") : "파일 업로드 전"}</span></div>
+      {fileError && <p className="inline-error" role="alert">{fileError}</p>}
       <h3 className="profile-subheading">AI 분석 결과 <span className="pill pill-gray">읽기 전용</span></h3>
-      {profile.resumeName?<><dl className="profile-dl"><dt>관심직무</dt><dd>콘텐츠 마케팅 (가상 결과)</dd><dt>학력·전공</dt><dd>OO대학교 경영학 졸업 (가상 결과)</dd><dt>자격증</dt><dd>컴퓨터활용능력 2급 (가상 결과)</dd><dt>보유 기술</dt><dd><div className="tags">{["SNS 운영","콘텐츠 기획","카드뉴스 제작","엑셀"].map(t=><span className="pill pill-gray" key={t}>{t}</span>)}</div></dd><dt>경험</dt><dd>카페 SNS 계정 운영 · 프로젝트 · 2025.03~2025.08<br/><span className="small-text">인스타그램 게시물 기획·제작</span></dd></dl><p className="alert alert-amber">분석 결과는 직접 고칠 수 없어요. 바꾸려면 이력서를 다시 올리면 됩니다. 현재는 실제 분석이 아닌 시연 예시입니다.</p></>:
-      <p className="subtle">이력서를 등록하면 이 영역에 분석 결과가 표시돼요. 실제 AI 추출은 백엔드 연동 이후 제공됩니다.</p>}
+      {mj ? <><dl className="profile-dl"><dt>학력·전공</dt><dd>{[mj.education, mj.major].filter(Boolean).join(" · ") || "추출 없음"}</dd><dt>자격증</dt><dd>{mj.certificates.length ? mj.certificates.join(", ") : "추출 없음"}</dd><dt>보유 기술</dt><dd><div className="tags">{mj.skills.length ? mj.skills.map(s => <span className="pill pill-gray" key={s.id}>{skillLabel(s.id)}</span>) : <span className="subtle">추출 없음</span>}</div></dd><dt>경험</dt><dd>{mj.experiences.length ? mj.experiences.map((e, i) => <div key={i}>{e.title}<br /><span className="small-text">{e.evidence}</span></div>) : "추출 없음"}</dd></dl><p className="alert alert-amber">분석 결과는 직접 고칠 수 없어요. 바꾸려면 이력서를 다시 올리면 됩니다.</p></> :
+        <p className="subtle">{resume && resume.extraction_status === "failed" ? "이력서 분석에 실패했어요. PDF를 다시 올려주세요." : "이력서를 등록하면 이 영역에 AI 분석 결과가 표시돼요."}</p>}
     </section>
-    <section className="panel mypage-card"><h2>지원 내역 {appliedIds.length}건</h2>
-      {appliedIds.length?appliedIds.map(id=>{const job=jobs.find(j=>j.id===id);return job?<Link className="application-row" key={id} href={routes.job(id)}><div><span className="small-text">{job.company}</span><strong>{job.title}</strong><span className="small-text">이 브라우저 세션에서 지원</span></div><div className="tags"><span className="pill pill-indigo">지원 시점 적합도 {job.score>=80?"높음":"보통"}</span><span className="pill pill-purple">지원 완료</span> ❯</div></Link>:null;}):<p className="subtle">아직 시연용 지원 기록이 없어요. <Link href={routes.youth} className="back-link">공고 보러 가기</Link></p>}
+    <section className="panel mypage-card"><h2>지원 내역 {apps.length}건</h2>
+      {apps.length ? apps.map(app => <Link className="application-row" key={app.application_id} href={routes.job(app.job_id)}><div><span className="small-text">{app.company_name}</span><strong>{app.title}</strong><span className="small-text">{app.applied_at.slice(0, 10)} 지원</span></div><div className="tags">{gradeLabel(app.match_snapshot) && <span className="pill pill-indigo">지원 시점 적합도 {gradeLabel(app.match_snapshot)}</span>}<span className={`pill ${policyTone(app.policy_snapshot.status)}`}>{policyText(app.policy_snapshot.status)}</span><a className="pill pill-purple" href={resumePdfPath(app.application_id)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>이력서 PDF</a> ❯</div></Link>) : <p className="subtle">아직 지원한 공고가 없어요. <Link href={routes.youth} className="back-link">공고 보러 가기</Link></p>}
     </section></div>
-    <p className="footnote">이 UI 시연에서 지원 취소 기능은 없어요. 정보를 바꿔도 지원 내역은 시연 당시 기준으로 유지됩니다.</p>
-    <button className="btn btn-orange delete-account" onClick={()=>setModal("delete")}>계정 삭제하기</button>
-    <DemoNotice/>
-    {modal==="delete"&&<JobitdaModal title="계정을 삭제하시겠습니까?" message={"계정을 삭제하면 회원정보 및 관련 데이터는 모두 삭제됩니다.\n삭제된 정보는 복구할 수 없습니다. 계속하시겠습니까?\n\n※ 시연에서는 이 브라우저 세션에 저장된 가상 데이터만 초기화됩니다."} primaryLabel="네" secondaryLabel="아니요" onClose={()=>setModal(null)} onPrimary={()=>{resetDemoState();setModal("deleted");}}/>}
-    {modal==="deleted"&&<JobitdaModal title="시연 데이터가 초기화되었어요" message="이 브라우저 세션의 가상 프로필과 지원 기록만 초기화했습니다. 실제 계정 삭제 API는 호출하지 않았습니다." onClose={()=>{setModal(null);router.push("/");}}/>}
-    {modal==="resume"&&<JobitdaModal title="맞춤 공고를 분석하고 있어요" message={"AI로 작성하신 개인정보 및 이력서를 분석하고 있습니다.\n약 20~40초 소요될 수 있습니다.\n\n※ 시연용으로 파일명만 변경됐으며 실제 AI 분석은 수행하지 않았습니다."} onClose={()=>setModal(null)}/>}
-    {modal==="invalid"&&<JobitdaModal title="입력 정보를 확인해주세요" message="이름·생년월일·서울 실거주지 자치구·희망직무를 확인해주세요." onClose={()=>setModal(null)}/>}
+    <button className="btn btn-ghost delete-account" onClick={() => setModal("logout")}>로그아웃</button>
+    {modal === "logout" && <JobitdaModal title="로그아웃 하시겠습니까?" primaryLabel="네" secondaryLabel="아니요" onClose={() => setModal(null)} onPrimary={logout} />}
+    {modal === "invalid" && <JobitdaModal title="입력 정보를 확인해주세요" message="이름·생년월일·실거주지·희망직무(1개 이상)를 확인해주세요." onClose={() => setModal(null)} />}
+    {modal === "error" && <JobitdaModal title="문제가 발생했어요" message={modalMsg} onClose={() => setModal(null)} />}
   </main></>;
 }
