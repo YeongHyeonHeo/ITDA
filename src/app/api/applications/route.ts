@@ -5,9 +5,17 @@ import { createAdminClient, jsonError, verifySameOrigin } from "@/lib/supabase/a
 import { getDecryptedYouthProfile } from "@/server/auth/youth-profile";
 import { evaluateJobPolicy, POLICY_RULE_VERSION } from "@/server/policy/evaluate";
 import { buildResumeSummary, fallbackMatchResult, matchRowToResult } from "@/server/applications/snapshot";
-import { getTodayKST } from "@/server/auth/crypto";
+import {
+  buildPersonalizedReason,
+  calculateMatchScore,
+  isMatchCacheValid,
+  toMatchResultRow,
+  type CachedMatchResultRow,
+} from "@/server/matching/score";
+import { getEvaluatedMonthKST, getTodayKST } from "@/server/auth/crypto";
+import { TAXONOMY_VERSION } from "@/contracts/taxonomy";
 import type { ApplyResponse } from "@/contracts/api";
-import type { ResumeMatchingJson } from "@/contracts/matching";
+import type { JobMatchingJson, MatchResult, ResumeMatchingJson } from "@/contracts/matching";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ApplySchema = z.object({ job_id: z.string().regex(UUID_RE, "job_id must be a UUID") });
@@ -20,7 +28,7 @@ export async function POST(request: Request) {
 
   // 쿠키 인증 상태 변경 요청의 CSRF 방어: Origin == 앱 origin 대조
   if (!verifySameOrigin(request)) {
-    return jsonError(403, "ROLE_FORBIDDEN", "요청 출처가 올바르지 않습니다.");
+    return jsonError(403, "ORIGIN_FORBIDDEN", "요청 출처가 올바르지 않습니다.");
   }
 
   let body: unknown;
@@ -58,7 +66,7 @@ export async function POST(request: Request) {
   // 3) 공고 확인 (검증 공고만 지원 가능)
   const { data: job } = await admin
     .from("jobs")
-    .select("id, status, deadline, employment_kind, job_version, match_status")
+    .select("id, status, deadline, employment_kind, job_version, match_status, matching_json")
     .eq("id", job_id)
     .eq("match_status", "verified")
     .maybeSingle();
@@ -76,6 +84,10 @@ export async function POST(request: Request) {
 
   // 6) 지원 시점 스냅샷 조립
   const resumeMatchingJson = profile.resume.matching_json as ResumeMatchingJson | null;
+  const jobMatchingJson = job.matching_json as JobMatchingJson | null;
+  const jobVersion = job.job_version || 1;
+  const evaluatedMonth = getEvaluatedMonthKST();
+
   const applicant_snapshot = {
     name: profile.name,
     age: profile.age,
@@ -84,17 +96,74 @@ export async function POST(request: Request) {
     resume_summary: buildResumeSummary(resumeMatchingJson),
   };
 
-  // fit_snapshot: match_results 캐시(버전 일치) 재사용, 없으면 pending 기본값
+  // fit_snapshot: match_results 캐시(5개 버전·월 키 일치) 재사용, 미스 시 즉시 calculateMatchScore 계산 및 캐시 저장
   const { data: cache } = await admin
     .from("match_results")
     .select("*")
     .eq("youth_user_id", user.id)
     .eq("job_id", job_id)
     .maybeSingle();
-  const fit_snapshot =
-    cache && cache.profile_version === profile.profile_version && cache.job_version === job.job_version
-      ? matchRowToResult(cache)
-      : fallbackMatchResult(profile.profile_version, job.job_version);
+
+  const cachedRow = (cache as CachedMatchResultRow | null) ?? null;
+  let fit_snapshot: MatchResult;
+
+  if (
+    isMatchCacheValid(cachedRow, {
+      profileVersion: profile.profile_version,
+      jobVersion,
+      taxonomyVersion: TAXONOMY_VERSION,
+      evaluatedMonth,
+    })
+  ) {
+    const cachedMatch = matchRowToResult(cachedRow);
+    if (cachedMatch.recommendable && !cachedMatch.reason && resumeMatchingJson && cachedMatch.breakdown) {
+      fit_snapshot = {
+        ...cachedMatch,
+        reason: buildPersonalizedReason({
+          resume: resumeMatchingJson,
+          breakdown: cachedMatch.breakdown,
+        }),
+      };
+      const rowToSave = toMatchResultRow({ youthUserId: user.id, jobId: job_id, match: fit_snapshot });
+      if (rowToSave) {
+        await admin.from("match_results").upsert(rowToSave, { onConflict: "youth_user_id,job_id" });
+      }
+    } else {
+      fit_snapshot = cachedMatch;
+    }
+  } else if (resumeMatchingJson && jobMatchingJson) {
+    const computed = calculateMatchScore({
+      desiredCategories: profile.desired_categories,
+      resume: resumeMatchingJson,
+      job: jobMatchingJson,
+      profileVersion: profile.profile_version,
+      jobVersion,
+      taxonomyVersion: TAXONOMY_VERSION,
+      evaluatedMonth,
+    });
+    fit_snapshot =
+      computed.recommendable && computed.breakdown
+        ? {
+            ...computed,
+            reason: buildPersonalizedReason({
+              resume: resumeMatchingJson,
+              breakdown: computed.breakdown,
+            }),
+          }
+        : computed;
+
+    const rowToSave = toMatchResultRow({ youthUserId: user.id, jobId: job_id, match: fit_snapshot });
+    if (rowToSave) {
+      await admin.from("match_results").upsert(rowToSave, { onConflict: "youth_user_id,job_id" });
+    }
+  } else if (profile.resume.extraction_status === "failed") {
+    fit_snapshot = {
+      ...fallbackMatchResult(profile.profile_version, jobVersion),
+      status: "failed",
+    };
+  } else {
+    fit_snapshot = fallbackMatchResult(profile.profile_version, jobVersion);
+  }
 
   const policy_snapshot = evaluateJobPolicy({
     age: profile.age,
