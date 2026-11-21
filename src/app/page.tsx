@@ -20,7 +20,7 @@ export default function Home(){
         <article className="hero-card"><h2>기업으로 시작</h2>
           <p>자사 공고에 지원한 청년을<br/>적합도와 인센티브 기본요건으로 검토</p>
           <p className="hero-extra">기업 회원가입 · 지원자 목록 · 기본요건 요약 · 공고 지원금 확인</p>
-          <Link className="btn btn-purple btn-wide" href="/login?role=company">기업으로 시작</Link>
+          <Link className="btn btn-purple btn-wide" href="/signup?role=company">기업으로 시작</Link>
         </article>
       </section>
       <p className="hero-note">본 서비스의 기업 계정과 지원 기록은 해커톤 시연용임</p>

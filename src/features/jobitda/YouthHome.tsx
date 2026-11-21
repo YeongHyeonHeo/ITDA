@@ -7,8 +7,9 @@ import {readDemoProfile,jobs,jobDeadlineLabel,policyText,ageAtKst,demoBasicPrech
 import {routes} from "@/lib/jobitda-routes";
 import {getJobApplicationRoute} from "@/lib/job-application-route";
 import {formatRegion} from "@/lib/regions";
+import {fitGradeClass,fitGradeLabel,fitGradeFromScore} from "@/lib/fit-grade";
 
-function ScorePill({job}:{job:DemoJob}){return <span className={`pill ${job.score>=80?"pill-indigo":job.score>=60?"pill-green":"pill-red"}`}>적합도 {job.score>=80?"높음":job.score>=60?"보통":"낮음"}</span>}
+function ScorePill({job}:{job:DemoJob}){return <span className={`pill ${fitGradeClass(job.score)}`}>적합도 {fitGradeLabel(job.score)}</span>}
 function PolicyPill({job}:{job:DemoJob}){return <span className={`pill ${job.status==="eligible"?"pill-orange":job.status==="needs_check"?"pill-warn":"pill-red"}`}>{policyText(job.status)}</span>}
 function ApplyMethodPill({job}:{job:DemoJob}){const route=getJobApplicationRoute(job);return <span className={`pill ${route.kind==="internal"?"pill-route-internal":"pill-route-external"}`}>{route.label}</span>}
 function JobListRow({job,withResume}:{job:DemoJob;withResume:boolean}){
@@ -30,7 +31,7 @@ export default function YouthHome(){
     result.sort((a,b)=>withResume?b.score-a.score:b.postedAt.localeCompare(a.postedAt));
     return result.filter(j=>!showOnlyOpen||!j.closed);
   },[withResume,showOnlyOpen]);
-  const recommended=withResume?jobs.filter(j=>j.score>=80&&!j.closed&&j.reason.length>0).slice(0,3):[];
+  const recommended=withResume?jobs.filter(j=>fitGradeFromScore(j.score)==="high"&&!j.closed&&j.reason.length>0).sort((a,b)=>b.score-a.score).slice(0,3):[];
   const age=ageAtKst(profile.birth);
   const precheck=demoBasicPrecheck(profile);
   return <><SiteHeader role="youth" name={profile.name}/><main className="page-shell youth-shell">

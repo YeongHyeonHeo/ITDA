@@ -4,13 +4,16 @@ import { Suspense, useEffect, useRef, useState, type ChangeEvent, type FormEvent
 import SiteHeader from "@/components/SiteHeader";
 import CompanySignupForm from "@/components/CompanySignupForm";
 import JobitdaModal from "@/components/JobitdaModal";
+import ResumeErrorModal from "@/components/ResumeErrorModal";
+import ResumeUploadProgress from "@/components/ResumeUploadProgress";
+import {readLocalResumeWithProgress, type ResumeProgress} from "@/lib/resume-upload-progress";
+import {validateLocalResumePdf, type ResumeErrorCode} from "@/lib/resume-errors";
 import {categories,writeDemoProfile,type DemoProfile} from "@/lib/demo-data";
 import {getLocalities} from "@/lib/regions";
 import {routes} from "@/lib/jobitda-routes";
 
-type ModalName="consent"|"duplicate"|"analyzing"|"invalid"|null;
+type ModalName="consent"|"duplicate"|"analyzing"|"invalid"|"resume-error"|null;
 type ResumeAnalysisStage="reading"|"organizing"|"complete";
-const MAX_RESUME_BYTES=5*1024*1024;
 function SignupInner(){
   const searchParams=useSearchParams();
   const router=useRouter();
@@ -19,6 +22,9 @@ function SignupInner(){
   const [file,setFile]=useState<File|null>(null); const [email,setEmail]=useState("");
   const [password,setPassword]=useState(""); const [agreed,setAgreed]=useState(false);
   const [modal,setModal]=useState<ModalName>(null); const [error,setError]=useState("");
+  const [resumeIssue,setResumeIssue]=useState<ResumeErrorCode|null>(null);
+  const [fileProgress,setFileProgress]=useState<ResumeProgress|null>(null);
+  const fileSelectionId=useRef(0);
   const [analysisStage,setAnalysisStage]=useState<ResumeAnalysisStage>("reading");
   const submissionStarted=useRef(false);
   const isAnalyzing=modal==="analyzing";
@@ -39,14 +45,31 @@ function SignupInner(){
     setError("");
     setChosen(prev=>prev.includes(category)?prev.filter(item=>item!==category):prev.length>=3?prev:[...prev,category]);
   }
-  function chooseFile(event:ChangeEvent<HTMLInputElement>){
-    const picked=event.target.files?.[0];if(!picked)return;
-    if(!picked.name.toLowerCase().endsWith(".pdf") || (picked.type!=="application/pdf"&&picked.type!=="")){
-      setError("PDF 파일만 선택할 수 있어요.");event.target.value="";return;
+  async function chooseFile(event:ChangeEvent<HTMLInputElement>){
+    const picked=event.currentTarget.files?.[0];if(!picked)return;
+    const id=++fileSelectionId.current;
+    event.currentTarget.value="";
+    setFile(null);
+    setError("");
+    setFileProgress({stage:"validating",percent:null});
+    const issue=await validateLocalResumePdf(picked);
+    if(id!==fileSelectionId.current)return;
+    if(issue){setFileProgress(null);setResumeIssue(issue);setModal("resume-error");return;}
+    try{
+      // Preview signup has no Supabase session yet: monitor REAL local file bytes only.
+      await readLocalResumeWithProgress(picked,progress=>{
+        if(fileSelectionId.current===id)setFileProgress(progress);
+      });
+      if(id!==fileSelectionId.current)return;
+      setFileProgress({stage:"demo",percent:100});
+    }catch{
+      if(id!==fileSelectionId.current)return;
+      setFileProgress(null);setResumeIssue("FILE_READ_FAILED");setModal("resume-error");return;
     }
-    if(picked.size>MAX_RESUME_BYTES){setError("5MB 이하 PDF 파일을 선택해주세요.");event.target.value="";return;}
-    setFile(picked);setError("");
-    // PDF 본문이나 비밀번호는 로컬 스토리지 및 서버에 저장하지 않습니다.
+    setResumeIssue(null);
+    setFile(picked);
+    // PDF 본문은 여기서 추출하지 않으며, 서버 업로드·AI 분석은 실행되지 않습니다.
+    // 스캔 PDF(PDF_TEXT_EMPTY) / 분석 실패(EXTRACTION_FAILED)는 백엔드 Y04 결과로만 확정합니다.
   }
   function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
@@ -86,13 +109,14 @@ function SignupInner(){
         <select id="locality" className="field" value={district} aria-label="서울특별시 자치구 선택" disabled={!province} onChange={e=>setDistrict(e.target.value)}><option value="">자치구 선택</option>{getLocalities("서울특별시").map(d=><option key={d} value={d}>{d}</option>)}</select>
       </div><p className="form-hint">실거주지 기준 서울특별시 자치구를 선택해주세요. 상세 주소는 수집하지 않으며, 정책 요건은 별도 확인합니다.</p></div>
       <div className="field-group"><p className="form-label">희망직무 카테고리 (최대 3개)</p><div className="chip-row" role="group" aria-label="희망직무 카테고리">{categories.map(c=><button className={`chip ${chosen.includes(c)?"is-selected":""}`} type="button" key={c} aria-pressed={chosen.includes(c)} disabled={chosen.length>=3&&!chosen.includes(c)} onClick={()=>toggleCategory(c)}>{c}</button>)}</div><p className="form-hint">{chosen.length}개 선택됨</p></div>
-      <div className="field-group"><label className="form-label" htmlFor="resume">이력서 PDF (선택)</label><div className="upload-area"><div className="upload-inner"><span aria-hidden="true">📄</span><div className="upload-text"><strong>{file?`${file.name} 선택됨`:"이력서 PDF를 업로드하세요."}</strong><small>{file?"PDF 선택 완료 · 실제 서버에는 업로드되지 않음":"텍스트 PDF · 5MB 이하 · 5쪽 이하(서버 검증 예정)"}</small></div><label htmlFor="resume" className="btn btn-orange">{file?"이력서 재업로드":"이력서 업로드"}</label></div><input id="resume" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={chooseFile}/></div><p className="form-hint">올리지 않아도 가입 가능. 단, 이력서 등록 전에는 AI 맞춤 추천과 지원이 제한돼요.</p></div>
+      <div className="field-group"><label className="form-label" htmlFor="resume">이력서 PDF (선택)</label><div className="upload-area"><div className="upload-inner"><span aria-hidden="true">📄</span><div className="upload-text"><strong>{file?`${file.name} 선택됨`:"이력서 PDF를 업로드하세요."}</strong><small>{file?"PDF 선택 완료 · 실제 서버에는 업로드되지 않음":"텍스트 PDF · 5MB 이하 · 5쪽 이하(서버 검증 예정)"}</small></div><label htmlFor="resume" className="btn btn-orange">{file?"이력서 재업로드":"이력서 업로드"}</label></div><input id="resume" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={chooseFile}/></div><ResumeUploadProgress progress={fileProgress}/><p className="form-hint">올리지 않아도 가입 가능. 단, 이력서 등록 전에는 AI 맞춤 추천과 지원이 제한돼요.</p></div>
       <label className="field-group"><span className="form-label">이메일</span><input className="field" type="email" autoComplete="off" placeholder="demo@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label>
       <label className="field-group"><span className="form-label">비밀번호</span><input className="field" type="password" autoComplete="new-password" placeholder="8자 이상 (시연용 가상 비밀번호)" value={password} onChange={e=>setPassword(e.target.value)}/><span className="form-hint">8자 이상 · 브라우저 저장/서버 전송 안 함</span></label>
       <label className="consent-box"><input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}/><span><strong>[필수] 개인정보 제공 동의</strong><small>시연: 실제 기업에 정보가 전달되지 않습니다. 정식 서비스에서는 동의한 항목만 지원 기업에 전달되도록 별도 구현이 필요합니다.</small></span></label>
       {error&&<p className="inline-error" role="alert">{error}</p>}
       <button className="btn btn-orange btn-wide submit-btn" type="submit" disabled={isAnalyzing}>가입하고 맞춤 공고 보기</button>
     </form>}
+    {modal==="resume-error"&&resumeIssue&&<ResumeErrorModal error={resumeIssue} onClose={()=>setModal(null)}/>}
     {modal==="consent"&&<JobitdaModal title="개인정보 제공 동의를 확인해주세요" message={"지원한 기업에 이름·이메일·이력서 등을 전달하려면 동의가 필요합니다.\n동의 후 가입을 진행해주세요."} onClose={()=>setModal(null)}/>}
     {modal==="duplicate"&&<JobitdaModal title="이미 가입된 이메일이에요" message={`${email} 으로 가입된 계정이 있습니다. 로그인하거나 다른 이메일로 가입해주세요. (시연용 예시)`} onClose={()=>setModal(null)}/>}
     {modal==="invalid"&&<JobitdaModal title="입력 정보를 확인해주세요" message="필수 항목을 작성한 후 다시 시도해주세요." onClose={()=>setModal(null)}/>}

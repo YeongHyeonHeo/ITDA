@@ -13,6 +13,7 @@ import {
 } from "@/lib/demo-data";
 import { getJobApplicationRoute } from "@/lib/job-application-route";
 import { routes } from "@/lib/jobitda-routes";
+import {fitGradeClass,fitGradeLabel} from "@/lib/fit-grade";
 
 type ModalKind = "confirm" | "complete" | "resume" | null;
 
@@ -70,7 +71,7 @@ export default function JobDetail() {
           <span className="pill pill-indigo">서울형 강소기업 (가상)</span>
           <span className={`pill ${internal ? "pill-route-internal" : "pill-route-external"}`}>{route.label}</span>
           {profile.resumeName && <span className="pill pill-indigo">AI 추천 예시</span>}
-          {profile.resumeName && <span className="pill pill-indigo">적합도 {job.score >= 80 ? "높음" : job.score >= 60 ? "보통" : "낮음"}</span>}
+          {profile.resumeName && <span className={`pill ${fitGradeClass(job.score)}`}>적합도 {fitGradeLabel(job.score)}</span>}
         </div>
         <p className="company-name">{job.company}</p>
         <h1>{job.title}</h1>
