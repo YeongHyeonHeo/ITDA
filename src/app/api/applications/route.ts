@@ -63,19 +63,25 @@ export async function POST(request: Request) {
     return NextResponse.json(dup, { status: 200, headers: { "Cache-Control": "private, no-store" } });
   }
 
-  // 3) 공고 확인 (검증 공고만 지원 가능)
+  // 3) 공고 및 소속 기업 참여 여부 확인 (검증 공고 + 참여 기업만 서비스 내 지원 가능)
   const { data: job } = await admin
     .from("jobs")
-    .select("id, status, deadline, employment_kind, job_version, match_status, matching_json")
+    .select("id, company_id, status, deadline, employment_kind, job_version, match_status, matching_json, companies(is_demo)")
     .eq("id", job_id)
     .eq("match_status", "verified")
     .maybeSingle();
-  if (!job) return jsonError(404, "JOB_NOT_FOUND", "존재하지 않거나 비공개 공고입니다.");
+  if (!job) return jsonError(404, "JOB_NOT_FOUND", "존재하지 않는 채용공고이거나 비공개 공고입니다.");
 
   // 4) 마감 확인 (KST 기준, status=open & deadline)
   const todayKST = getTodayKST();
   const isClosed = job.status !== "open" || (job.deadline != null && job.deadline < todayKST);
   if (isClosed) return jsonError(409, "POSTING_CLOSED", "마감된 공고입니다.");
+
+  // 4-1) 기업 참여 여부 확인 (미참여 기업 공고는 외부 지원 링크로 이동해야 함)
+  const companyRel = Array.isArray(job.companies) ? job.companies[0] : job.companies;
+  if (!companyRel?.is_demo) {
+    return jsonError(403, "COMPANY_NOT_PARTICIPATING", "플랫폼 미참여 기업입니다. 외부 지원 링크를 이용해 주세요.");
+  }
 
   // 5) 이력서 확인 (현재 연결된 이력서 없으면 지원 불가)
   if (!profile.resume) {

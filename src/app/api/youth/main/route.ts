@@ -54,6 +54,7 @@ export async function GET(request: Request) {
       deadline,
       posted_at,
       status,
+      source,
       industry,
       matching_json,
       job_version,
@@ -121,12 +122,14 @@ export async function GET(request: Request) {
       }
     }
 
+    const isParticipating = Boolean(companyRow.is_demo);
     const company: CompanySummary = {
       id: companyRow.id || "",
       name: companyRow.name || "강소기업",
       industry: row.industry || companyRow.business_desc || null,
       gu: companyRow.gu || null,
-      is_demo: Boolean(companyRow.is_demo),
+      is_demo: isParticipating,
+      participation: isParticipating ? "participating" : "non_participating",
     };
 
     const isApplied = appliedJobIds.has(row.id);
@@ -134,7 +137,12 @@ export async function GET(request: Request) {
     const isClosed = row.status === "closed" || (deadlineStr != null && deadlineStr < todayKST);
 
     let canApply = true;
-    let applyBlockReason: "already_applied" | "closed" | "resume_required" | null = null;
+    let applyBlockReason:
+      | "already_applied"
+      | "closed"
+      | "company_not_participating"
+      | "resume_required"
+      | null = null;
 
     if (isApplied) {
       canApply = false;
@@ -142,6 +150,9 @@ export async function GET(request: Request) {
     } else if (isClosed) {
       canApply = false;
       applyBlockReason = "closed";
+    } else if (!isParticipating) {
+      canApply = false;
+      applyBlockReason = "company_not_participating";
     } else if (!hasResume) {
       canApply = false;
       applyBlockReason = "resume_required";
@@ -197,6 +208,7 @@ export async function GET(request: Request) {
       applied: isApplied,
       can_apply: canApply,
       apply_block_reason: applyBlockReason,
+      external_url: row.source || null,
       match,
       policy,
     });
