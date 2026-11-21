@@ -14,6 +14,79 @@ const round1 = (val: number) => Math.round(val * 10) / 10;
 const skillLabelMap = new Map<string, string>(SKILL_TAXONOMY.map((s) => [s.id, s.label]));
 const expLabelMap = new Map<string, string>(EXPERIENCE_TAXONOMY.map((e) => [e.id, e.label]));
 
+/** "YYYY-MM" 또는 "YYYY-MM-DD"를 0-기반 월 인덱스(year * 12 + month - 1)로 변환 */
+function parseMonthIndex(ym: string | null | undefined): number | null {
+  if (!ym || typeof ym !== "string") return null;
+  const match = /^(\d{4})-(0[1-9]|1[0-2])(?:-\d{2})?$/.exec(ym.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (year < 1950 || year > 2100) return null;
+  return year * 12 + (month - 1);
+}
+
+/**
+ * 이력서에서 검증된 정규 경력 개월수 M을 결정한다 (matching-spec.md 2.4).
+ * 1. career.declared_total_months가 양수로 명시되어 있으면 그 값을 사용
+ * 2. 없으면 kind === "employment" 항목들의 [start_month, end_month) 월 합집합으로 계산
+ *    (종료월 미포함, is_current === true면 평가월 KST까지, 겹친 기간은 1회만 인정)
+ * 3. internship / project / other는 합산하지 않음
+ * 4. 날짜 누락·상충·미래 날짜가 있으면 null. 명시적 무경력(explicitly_no_experience === true)만 0으로 인정
+ */
+export function resolveCareerMonths(
+  resume: ResumeMatchingJson,
+  evaluatedMonth: string
+): number | null {
+  const declared = resume.career?.declared_total_months;
+  if (typeof declared === "number" && Number.isFinite(declared)) {
+    if (declared > 0) return Math.floor(declared);
+    if (declared === 0 && resume.career?.explicitly_no_experience === true) return 0;
+  }
+
+  const employmentExps = (resume.experiences || []).filter((e) => e.kind === "employment");
+  if (employmentExps.length > 0) {
+    const evalIdx = parseMonthIndex(evaluatedMonth);
+    if (evalIdx === null) return null;
+
+    const employedMonths = new Set<number>();
+    for (const exp of employmentExps) {
+      const startIdx = parseMonthIndex(exp.start_month);
+      if (startIdx === null || startIdx > evalIdx) {
+        return null; // 시작월 누락 또는 미래 날짜
+      }
+
+      let endIdx: number | null = null;
+      if (exp.is_current === true) {
+        if (exp.end_month !== null && exp.end_month !== undefined) {
+          const parsedEnd = parseMonthIndex(exp.end_month);
+          if (parsedEnd === null || parsedEnd > evalIdx) return null;
+        }
+        endIdx = evalIdx;
+      } else {
+        endIdx = parseMonthIndex(exp.end_month);
+      }
+
+      if (endIdx === null || endIdx > evalIdx || endIdx < startIdx) {
+        return null; // 종료월 누락·미래 날짜·선후 상충
+      }
+
+      for (let m = startIdx; m < endIdx; m++) {
+        employedMonths.add(m);
+      }
+    }
+
+    if (employedMonths.size > 0) {
+      return employedMonths.size;
+    }
+    return resume.career?.explicitly_no_experience === true ? 0 : null;
+  }
+
+  if (resume.career?.explicitly_no_experience === true) {
+    return 0;
+  }
+  return null;
+}
+
 export function calculateMatchScore(params: {
   desiredCategories: CategoryId[];
   resume: ResumeMatchingJson | null;
@@ -172,12 +245,7 @@ export function calculateMatchScore(params: {
   // ==========================================
   // 4. Career Score (15점)
   // ==========================================
-  let M: number | null = null;
-  if (typeof resume.career?.declared_total_months === "number") {
-    M = resume.career.declared_total_months;
-  } else if (resume.career?.explicitly_no_experience === true) {
-    M = 0;
-  }
+  const M = resolveCareerMonths(resume, evaluatedMonth);
 
   const jobCareer = job.career || {
     accepts_new_graduate: null,
@@ -356,3 +424,87 @@ export function buildPersonalizedReason(params: {
 
   return `${clauses.join(" 및 ")} 이력서 정보가 본 공고의 요구 요건과 직접 부합합니다.`;
 }
+
+export type CachedMatchResultRow = {
+  youth_user_id: string;
+  job_id: string;
+  fit_score: number | string;
+  recommendable: boolean;
+  breakdown: MatchResult["breakdown"];
+  needs_check: string[];
+  evidence?: unknown;
+  reason: string | null;
+  profile_version: number;
+  job_version: number;
+  algorithm_version: string;
+  taxonomy_version: string;
+  evaluated_month: string;
+};
+
+/** 캐시 행이 현재 버전·월 키와 일치하는지 확인 (matching-spec.md 3.3) */
+export function isMatchCacheValid(
+  row: CachedMatchResultRow | null | undefined,
+  params: {
+    profileVersion: number;
+    jobVersion: number;
+    taxonomyVersion: string;
+    evaluatedMonth: string;
+  }
+): row is CachedMatchResultRow {
+  if (!row || !row.breakdown) return false;
+  return (
+    row.profile_version === params.profileVersion &&
+    row.job_version === params.jobVersion &&
+    row.algorithm_version === MATCHING_VERSION &&
+    row.taxonomy_version === params.taxonomyVersion &&
+    String(row.evaluated_month) === params.evaluatedMonth
+  );
+}
+
+/** DB match_results 캐시 행을 API 계약 MatchResult로 복원 */
+export function fromCachedMatchRow(row: CachedMatchResultRow): MatchResult {
+  const score = round1(Number(row.fit_score));
+  const fit_grade = score >= 60.0 ? "high" : score >= 40.0 ? "medium" : "low";
+  return {
+    status: "ready",
+    score,
+    fit_grade,
+    breakdown: row.breakdown,
+    recommendable: Boolean(row.recommendable),
+    reason: row.reason ?? null,
+    needs_check: Array.isArray(row.needs_check) ? row.needs_check : [],
+    algorithm_version: MATCHING_VERSION,
+    profile_version: row.profile_version,
+    job_version: row.job_version,
+    taxonomy_version: row.taxonomy_version,
+    evaluated_month: String(row.evaluated_month),
+  };
+}
+
+/** 계산된 MatchResult(ready)를 match_results upsert용 행으로 변환 */
+export function toMatchResultRow(params: {
+  youthUserId: string;
+  jobId: string;
+  match: MatchResult;
+}): CachedMatchResultRow | null {
+  const { youthUserId, jobId, match } = params;
+  if (match.status !== "ready" || match.score === null || !match.breakdown) {
+    return null;
+  }
+  return {
+    youth_user_id: youthUserId,
+    job_id: jobId,
+    fit_score: match.score,
+    recommendable: match.recommendable,
+    breakdown: match.breakdown,
+    needs_check: match.needs_check,
+    evidence: [],
+    reason: match.reason,
+    profile_version: match.profile_version,
+    job_version: match.job_version,
+    algorithm_version: match.algorithm_version,
+    taxonomy_version: match.taxonomy_version,
+    evaluated_month: match.evaluated_month,
+  };
+}
+
