@@ -21,6 +21,28 @@ create table if not exists public.company_accounts (
 
 create index if not exists company_accounts_company_idx on public.company_accounts(company_id);
 
+-- 기업 계정 연결(회원가입/관리자 매핑) 시 해당 기업 상태를 참여('participating', is_demo=true)로 자동 전환
+create or replace function public.mark_company_participating()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.companies
+     set participation = 'participating',
+         is_demo = true,
+         updated_at = now()
+   where id = new.company_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_company_accounts_participating on public.company_accounts;
+create trigger trg_company_accounts_participating
+  after insert on public.company_accounts
+  for each row execute function public.mark_company_participating();
+
 -- ============================================================================
 -- 2. 청년 프로필 & 희망 직무 (youth_profiles, youth_categories)
 -- ============================================================================

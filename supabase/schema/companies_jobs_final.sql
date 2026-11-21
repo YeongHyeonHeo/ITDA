@@ -26,6 +26,8 @@ create table if not exists public.companies (
 
   source                text        not null default 'data.seoul.go.kr/OA-23042',
   source_downloaded_at  date,
+  participation         text        not null default 'non_participating'
+                                      check (participation in ('participating','non_participating')),
   is_demo               boolean     not null default false,
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now(),
@@ -33,6 +35,20 @@ create table if not exists public.companies (
   constraint companies_zip_format  check (zip_code is null or zip_code ~ '^[0-9]{5}$'),
   constraint companies_biz_type    check (biz_type_code is null or biz_type_code in ('IFIDS','SRIDS','MCIDS'))
 );
+
+alter table public.companies
+  add column if not exists participation text not null default 'non_participating';
+
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'companies_participation_check' and conrelid = 'public.companies'::regclass
+  ) then
+    alter table public.companies
+      add constraint companies_participation_check
+      check (participation in ('participating','non_participating'));
+  end if;
+end $$;
 
 create unique index if not exists companies_name_gu_uniq
   on public.companies (name_norm, coalesce(gu, ''));
