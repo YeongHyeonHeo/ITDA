@@ -4,13 +4,13 @@ import { requireUser } from "@/server/auth/require-user";
 import { createAdminClient, jsonError } from "@/lib/supabase/admin";
 import { getDecryptedYouthProfile } from "@/server/auth/youth-profile";
 import {
-  buildPersonalizedReason,
   calculateMatchScore,
   fromCachedMatchRow,
   isMatchCacheValid,
   toMatchResultRow,
   type CachedMatchResultRow,
 } from "@/server/matching/score";
+import { generateLlmReason } from "@/server/matching/reason";
 import { evaluateJobPolicy } from "@/server/policy/evaluate";
 import { getEvaluatedMonthKST, getTodayKST } from "@/server/auth/crypto";
 import { TAXONOMY_VERSION } from "@/contracts/taxonomy";
@@ -59,6 +59,7 @@ export async function GET(request: Request, context: RouteContext) {
       status,
       source,
       industry,
+      raw_text,
       matching_json,
       job_version,
       crawled_at,
@@ -165,7 +166,10 @@ export async function GET(request: Request, context: RouteContext) {
     if (!isClosed && cachedMatch.recommendable && !cachedMatch.reason && resumeJson && cachedMatch.breakdown) {
       match = {
         ...cachedMatch,
-        reason: buildPersonalizedReason({
+        reason: await generateLlmReason({
+          companyName: company.name,
+          jobTitle: jobRow.title,
+          jobRawText: jobRow.raw_text,
           resume: resumeJson,
           breakdown: cachedMatch.breakdown,
         }),
@@ -189,7 +193,10 @@ export async function GET(request: Request, context: RouteContext) {
       !isClosed && baseMatch.recommendable && resumeJson && baseMatch.breakdown
         ? {
             ...baseMatch,
-            reason: buildPersonalizedReason({
+            reason: await generateLlmReason({
+              companyName: company.name,
+              jobTitle: jobRow.title,
+              jobRawText: jobRow.raw_text,
               resume: resumeJson,
               breakdown: baseMatch.breakdown,
             }),

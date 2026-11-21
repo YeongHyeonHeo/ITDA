@@ -6,12 +6,12 @@ import { getDecryptedYouthProfile } from "@/server/auth/youth-profile";
 import { evaluateJobPolicy, POLICY_RULE_VERSION } from "@/server/policy/evaluate";
 import { buildResumeSummary, fallbackMatchResult, matchRowToResult } from "@/server/applications/snapshot";
 import {
-  buildPersonalizedReason,
   calculateMatchScore,
   isMatchCacheValid,
   toMatchResultRow,
   type CachedMatchResultRow,
 } from "@/server/matching/score";
+import { generateLlmReason } from "@/server/matching/reason";
 import { getEvaluatedMonthKST, getTodayKST } from "@/server/auth/crypto";
 import { TAXONOMY_VERSION } from "@/contracts/taxonomy";
 import type { ApplyResponse } from "@/contracts/api";
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   // 3) 공고 및 소속 기업 참여 여부 확인 (검증 공고 + 참여 기업만 서비스 내 지원 가능)
   const { data: job } = await admin
     .from("jobs")
-    .select("id, company_id, status, deadline, employment_kind, job_version, match_status, matching_json, companies(is_demo)")
+    .select("id, company_id, company_name, title, status, deadline, employment_kind, job_version, match_status, raw_text, matching_json, companies(is_demo)")
     .eq("id", job_id)
     .eq("match_status", "verified")
     .maybeSingle();
@@ -125,7 +125,10 @@ export async function POST(request: Request) {
     if (cachedMatch.recommendable && !cachedMatch.reason && resumeMatchingJson && cachedMatch.breakdown) {
       fit_snapshot = {
         ...cachedMatch,
-        reason: buildPersonalizedReason({
+        reason: await generateLlmReason({
+          companyName: job.company_name,
+          jobTitle: job.title,
+          jobRawText: job.raw_text,
           resume: resumeMatchingJson,
           breakdown: cachedMatch.breakdown,
         }),
@@ -151,7 +154,10 @@ export async function POST(request: Request) {
       computed.recommendable && computed.breakdown
         ? {
             ...computed,
-            reason: buildPersonalizedReason({
+            reason: await generateLlmReason({
+              companyName: job.company_name,
+              jobTitle: job.title,
+              jobRawText: job.raw_text,
               resume: resumeMatchingJson,
               breakdown: computed.breakdown,
             }),

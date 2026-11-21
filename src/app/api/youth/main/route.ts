@@ -4,13 +4,13 @@ import { requireUser } from "@/server/auth/require-user";
 import { createAdminClient, jsonError } from "@/lib/supabase/admin";
 import { getDecryptedYouthProfile } from "@/server/auth/youth-profile";
 import {
-  buildPersonalizedReason,
   calculateMatchScore,
   fromCachedMatchRow,
   isMatchCacheValid,
   toMatchResultRow,
   type CachedMatchResultRow,
 } from "@/server/matching/score";
+import { generateLlmReason } from "@/server/matching/reason";
 import { evaluateJobPolicy } from "@/server/policy/evaluate";
 import { getEvaluatedMonthKST, getTodayKST } from "@/server/auth/crypto";
 import { TAXONOMY_VERSION } from "@/contracts/taxonomy";
@@ -56,6 +56,7 @@ export async function GET(request: Request) {
       status,
       source,
       industry,
+      raw_text,
       matching_json,
       job_version,
       crawled_at,
@@ -99,8 +100,10 @@ export async function GET(request: Request) {
 
   // 3. Transform to JobCards with cache hit check or dynamic score calculation
   const allCards: JobCard[] = [];
+  const rawTextByJobId = new Map<string, string | null>();
 
   for (const row of jobsData || []) {
+    rawTextByJobId.set(row.id, (row.raw_text as string | null) ?? null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const companyRow = (row.companies as any) || {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,48 +249,56 @@ export async function GET(request: Request) {
       .filter((card) => !card.is_closed && card.match.recommendable)
       .slice(0, 3);
 
-    recommended = top3Candidates.map((card) => {
-      const cachedRow = cacheMap.get(card.job_id);
-      const cachedReason =
-        isMatchCacheValid(cachedRow, {
-          profileVersion: profile.profile_version,
-          jobVersion: card.match.job_version,
-          taxonomyVersion: TAXONOMY_VERSION,
-          evaluatedMonth,
-        }) && cachedRow.reason
-          ? cachedRow.reason
-          : null;
+    recommended = await Promise.all(
+      top3Candidates.map(async (card) => {
+        const cachedRow = cacheMap.get(card.job_id);
+        const cachedReason =
+          isMatchCacheValid(cachedRow, {
+            profileVersion: profile.profile_version,
+            jobVersion: card.match.job_version,
+            taxonomyVersion: TAXONOMY_VERSION,
+            evaluatedMonth,
+          }) && cachedRow.reason
+            ? cachedRow.reason
+            : null;
 
-      const reason =
-        cachedReason ||
-        (card.match.breakdown
-          ? buildPersonalizedReason({ resume: resumeJson, breakdown: card.match.breakdown })
-          : null);
+        const reason =
+          cachedReason ||
+          (card.match.breakdown
+            ? await generateLlmReason({
+                companyName: card.company.name,
+                jobTitle: card.title,
+                jobRawText: rawTextByJobId.get(card.job_id),
+                resume: resumeJson,
+                breakdown: card.match.breakdown,
+              })
+            : null);
 
-      const updatedMatch = {
-        ...card.match,
-        reason,
-      };
+        const updatedMatch = {
+          ...card.match,
+          reason,
+        };
 
-      if (reason) {
-        reasonByJobId.set(card.job_id, reason);
-        if (!cachedReason) {
-          const rowWithReason = toMatchResultRow({
-            youthUserId: userId,
-            jobId: card.job_id,
-            match: updatedMatch,
-          });
-          if (rowWithReason) {
-            toUpsertMap.set(card.job_id, rowWithReason);
+        if (reason) {
+          reasonByJobId.set(card.job_id, reason);
+          if (!cachedReason) {
+            const rowWithReason = toMatchResultRow({
+              youthUserId: userId,
+              jobId: card.job_id,
+              match: updatedMatch,
+            });
+            if (rowWithReason) {
+              toUpsertMap.set(card.job_id, rowWithReason);
+            }
           }
         }
-      }
 
-      return {
-        ...card,
-        match: updatedMatch,
-      };
-    });
+        return {
+          ...card,
+          match: updatedMatch,
+        };
+      })
+    );
 
     if (toUpsertMap.size > 0) {
       const { error: cacheUpsertErr } = await admin
