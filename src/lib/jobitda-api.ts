@@ -7,6 +7,7 @@ import type {
   ApiError, MeResponse, ProfileResponse, CreateProfileRequest, UpdateProfileRequest,
   ResumeResponse, MainResponse, JobDetailResponse, ApplyRequest, ApplyResponse,
   ApplicationsResponse, CompanyOverviewResponse, ApplicantsResponse,
+  CompanySummary, CreateCompanyProfileRequest, CompanyProfileResponse,
 } from "@/contracts/api";
 
 export class JobitdaApiError extends Error {
@@ -34,6 +35,8 @@ export const jobitdaApi={
   applications:()=>request<ApplicationsResponse>("/api/youth/applications"),
   companyOverview:()=>request<CompanyOverviewResponse>("/api/company/overview"),
   applicants:(jobId:string,policy?:string)=>request<ApplicantsResponse>(`/api/company/jobs/${encodeURIComponent(jobId)}/applicants${policy?`?policy=${encodeURIComponent(policy)}`:""}`),
+  companies:(q?:string)=>request<{companies:CompanySummary[]}>(`/api/companies${q?`?q=${encodeURIComponent(q)}`:""}`),
+  createCompanyProfile:(body:CreateCompanyProfileRequest)=>request<CompanyProfileResponse>("/api/company/profile",json("POST",body)),
 };
 /** F01 이력서 PDF는 허가된 기업에만 제공. 직접 링크하기 전에 서버의 권한 응답을 확인하세요. */
 export const resumePdfPath=(applicationId:string)=>`/api/applications/${encodeURIComponent(applicationId)}/resume`;
