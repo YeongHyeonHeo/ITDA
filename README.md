@@ -55,7 +55,7 @@ npm start
 | Y05 | `GET /api/youth/main` | 구현 및 로컬 E2E 검증 완료 (블렌드엑스 AE 100점 `high` 1위 확인) |
 | Y06 | `GET /api/youth/jobs/{jobId}` | 구현 및 로컬 E2E 검증 완료 |
 
-**Track 2 (지원·기업)** — 구현 및 로컬 E2E 검증 완료 (실 Supabase 23/23 통과, `typecheck`·`lint`·`build` 통과). 코드는 리뷰 PR 머지 대기 상태이며 `feat/track2-*` 브랜치에 있습니다.
+**Track 2 (지원·기업)** — 구현 및 로컬 E2E 검증 완료 후 main 머지 완료 (PR #3~#6, `.gitignore`는 #2). 실 Supabase 23/23 통과, `typecheck`·`lint`·`build` 통과.
 
 | API | 경로 | 상태 |
 |---|---|---|
