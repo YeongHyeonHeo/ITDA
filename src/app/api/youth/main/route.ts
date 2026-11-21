@@ -202,33 +202,28 @@ export async function GET(request: Request) {
     });
   }
 
-  // 4. Sort allCards (PRD v1.4 D-06, D-20)
-  if (hasResume) {
-    allCards.sort((a, b) => {
-      // 1) Score desc
+  // 4. Sort allCards
+  // - 이력서 있음: score DESC → 진행중 먼저 → 마감일 빠른 순(null 마지막) → 공고 ID ASC
+  // - 이력서 없음: 진행중 먼저 → 마감일 빠른 순(null 마지막) → 공고 ID ASC
+  allCards.sort((a, b) => {
+    if (hasResume) {
       const scoreA = a.match.score ?? -1;
       const scoreB = b.match.score ?? -1;
       if (scoreB !== scoreA) return scoreB - scoreA;
+    }
 
-      // 2) Open jobs first
-      if (a.is_closed !== b.is_closed) return a.is_closed ? 1 : -1;
+    if (a.is_closed !== b.is_closed) return a.is_closed ? 1 : -1;
 
-      // 3) Earliest deadline first (nulls go last)
-      if (a.deadline && b.deadline) {
-        if (a.deadline !== b.deadline) return a.deadline.localeCompare(b.deadline);
-      } else if (a.deadline && !b.deadline) {
-        return -1;
-      } else if (!a.deadline && b.deadline) {
-        return 1;
-      }
+    if (a.deadline && b.deadline) {
+      if (a.deadline !== b.deadline) return a.deadline.localeCompare(b.deadline);
+    } else if (a.deadline && !b.deadline) {
+      return -1;
+    } else if (!a.deadline && b.deadline) {
+      return 1;
+    }
 
-      // 4) Job ID asc
-      return a.job_id.localeCompare(b.job_id);
-    });
-  } else {
-    // Without resume: crawled_at / posted_at desc -> job_id asc
-    // Note: jobsData is already ordered by crawled_at desc
-  }
+    return a.job_id.localeCompare(b.job_id);
+  });
 
   // 5. Select recommended TOP 3 (PRD v1.4 D-19) & generate personalized reason ONLY for TOP 3
   const reasonByJobId = new Map<string, string>();

@@ -100,7 +100,7 @@
 ### 3.2 정렬 및 추천 기준
 - **목록 정렬 (PRD v1.4 D-06, D-20)**:
   - **이력서 정제 완료 시 (`ready`)**: `score DESC` → **진행중 공고 먼저 (`is_closed ASC`)** → `deadline ASC (NULL 마지막)` → `job_id ASC`.
-  - **이력서 미등록 시 (`no_resume`)**: **최신 등록일 순 (`crawled_at / posted_at DESC NULLS LAST, job_id ASC`)**.
+  - **이력서 미등록 시 (`no_resume`)**: **진행중 공고 먼저 (`is_closed ASC`) → 마감일 빠른 순 (`deadline ASC NULLS LAST`) → 공고 ID (`job_id ASC`)**.
 - **화면 표시 등급 (`fit_grade`, PRD v1.4 D-05)**:
   - 화면에는 0~100점 점수 숫자를 노출하지 않고 3단계 등급으로 표시:
     - **`high` (높음)**: 60점 이상
