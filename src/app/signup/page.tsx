@@ -1,8 +1,8 @@
 "use client";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type ChangeEvent, type FormEvent } from "react";
 import SiteHeader from "@/components/SiteHeader";
+import CompanySignupForm from "@/components/CompanySignupForm";
 import JobitdaModal from "@/components/JobitdaModal";
 import {categories,writeDemoProfile,type DemoProfile} from "@/lib/demo-data";
 import {getLocalities} from "@/lib/regions";
@@ -48,12 +48,12 @@ function SignupInner(){
     router.push(routes.youth);
   }
   return <><SiteHeader/><main className="page-shell narrow-shell signup-shell">
-    <h1 className="page-title">{role==="youth"?"청년 회원가입":"기업 회원가입 안내"}</h1>
+    <h1 className="page-title">{role==="youth"?"청년 회원가입":"기업 회원가입"}</h1>
     <div className="seg-tabs" role="tablist" aria-label="가입 유형">
       <button type="button" role="tab" aria-selected={role==="youth"} className={role==="youth"?"active-orange":""} onClick={()=>setRole("youth")}>청년</button>
       <button type="button" role="tab" aria-selected={role==="company"} className={role==="company"?"active-purple":""} onClick={()=>setRole("company")}>기업</button>
     </div>
-    {role==="company"?<section className="panel company-signup-note"><h2>기업 계정은 사전 등록된 시연 계정을 사용합니다</h2><p>해커톤 MVP에서는 기업 자체 회원가입과 실명 인증을 지원하지 않습니다. 등록된 기업 계정으로 로그인해 자사 지원자 목록을 확인할 수 있습니다.</p><Link href="/login?role=company" className="btn btn-purple">기업 로그인으로 이동</Link></section>:
+    {role==="company"?<CompanySignupForm/>:
     <form className="panel signup-form" noValidate onSubmit={submit}>
       <p className="demo-form-note">로컬 시연 화면입니다. 실제 개인정보나 평소 사용하는 비밀번호를 입력하지 말고 가상 정보만 사용해주세요. 실제 회원가입·AI 분석·파일 업로드는 수행되지 않습니다.</p>
       <label className="field-group"><span className="form-label">이름</span><input className="field" value={name} onChange={e=>setName(e.target.value)} placeholder="예: 홍길동" autoComplete="off"/></label>

@@ -67,3 +67,26 @@
 .chip:disabled{opacity:.45;cursor:not-allowed}
 .company-policy-note{color:#7a8295;font-size:11px;line-height:1.5;align-self:center;max-width:280px;word-break:keep-all}
 @media(max-width:760px){.company-policy-note{flex-basis:100%;max-width:100%;}}
+
+/* D-40 / S2-C: enterprise signup demo layout; visually consistent with youth signup. */
+.company-signup-form .company-verify-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.company-signup-form .company-verify-row .btn{min-height:46px;white-space:nowrap}
+.company-signup-form .company-verify-feedback{margin:11px 0 0;padding:11px 13px;border-radius:9px;font-size:13px;line-height:1.65;word-break:keep-all}
+.company-signup-form .company-verify-feedback.is-success{background:#f3f0ff;color:#5d45b6}
+.company-signup-form .company-verify-feedback.is-error{background:#fff1f0;color:#a34a4a}
+.company-choice-box{margin-top:15px;padding:15px;border:1px solid #e7ddfa;border-radius:10px;background:#faf8ff}
+.company-choice-box .form-label{color:#6759a2}
+.company-agreements{display:grid;gap:12px;margin-top:24px;padding:18px;background:#f8f7fd;border-radius:12px}
+.company-agreement-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.company-agreement-row label{display:flex;align-items:flex-start;gap:9px;font-size:13px;line-height:1.55;cursor:pointer;min-width:0}
+.company-agreement-row input{accent-color:#8066d9;margin:4px 0 0;flex-shrink:0}
+.company-agreement-row strong{color:#7358c3}
+.company-view-link{flex-shrink:0;border:0;background:none;color:#7358c3;text-decoration:underline;text-underline-offset:3px;font-size:12px;font-weight:700;padding:5px}
+.company-signup-submit{margin-top:22px;min-height:50px}
+.company-signup-submit:disabled{background:#e5e4ec;color:#a0a0ab;border-color:#e5e4ec}
+.company-signup-example{margin:19px 0 0;font-size:11px;color:#8990a2;line-height:1.9;word-break:keep-all}
+.company-signup-example code{padding:2px 4px;background:#f3f2f7;border-radius:4px;color:#72648c;white-space:nowrap}
+.company-terms-placeholder{text-align:left;background:#f7f7fb;padding:16px;border-radius:10px;font-size:13px;line-height:1.8;word-break:keep-all}
+.company-terms-placeholder p{margin:0 0 8px}
+.company-terms-placeholder p:last-child{margin-bottom:0}
+@media(max-width:520px){.company-signup-form .company-verify-row{grid-template-columns:minmax(0,1fr)}.company-signup-form .company-verify-row .btn{width:100%}.company-agreement-row{align-items:flex-start}}
