@@ -57,34 +57,23 @@ export function jsonError(status: number, code: string, message: string) {
 | 1-4 | 100점 규칙 매칭 엔진 | `src/server/matching/score.ts` | **25분** |
 | 1-5 | 청년 메인 추천·목록(`Y05`) & 공고 상세(`Y06`) | `src/app/api/youth/main/route.ts`, `src/app/api/youth/jobs/[jobId]/route.ts` | **25분** |
 
-### 📌 트랙 1 진행 현황 (2026-11-21 09:50 기준)
+### 📌 트랙 1 진행 현황 (2026-11-21 11:05 최종 완료)
 
-| 순서 | 상태 | 구현 파일 | 검증 | 명세 대비 남은 것 |
+| 순서 | 상태 | 구현 파일 | 검증 | 비고 |
 | --- | --- | --- | --- | --- |
-| 공통 | ✅ 완료 | `src/lib/supabase/admin.ts`, `src/server/auth/require-user.ts` | 타입·린트·빌드 통과 | `require-user.ts`가 쿠키 외 `Authorization: Bearer`도 허용 (로컬 테스트용, 배포 전 유지 여부 결정) |
-| 1-1 | ✅ 완료 | `src/server/auth/crypto.ts` (`encryptPii`, `decryptPii`, `calcKoreanAge`, `getTodayKST`, `getEvaluatedMonthKST`) | 암복호화 왕복 일치 확인 | 암호문 포맷이 `iv:tag:cipher`(hex)이며 명세의 `v1:<b64>` 포맷, `PII_ENCRYPTION_KEY` base64 디코딩과 다름. 키는 SHA-256으로 파생 |
-| 1-2 | 🟡 구현, 일부 미검증 | `src/app/api/youth/profile/route.ts`, `src/server/auth/youth-profile.ts` | Y01(201), Y02(200) 실 Supabase E2E 성공 | Y03 미검증. Zod 미사용(수동 검증). 에러코드 불일치(`PRIVACY_CONSENT_REQUIRED`·`INVALID_*` vs `CONSENT_REQUIRED`·`VALIDATION_ERROR`). `PROFILE_ALREADY_EXISTS`(409), `ROLE_FORBIDDEN`(403), `ONBOARDING_REQUIRED`(409) 가드 없음. 프로필 없으면 404 반환. PATCH의 `match_results` 캐시 삭제 없음. POST가 upsert라 재호출 시 덮어씀 |
-| 1-3 | 🟡 구현, 미검증 | `src/server/resumes/extract.ts`, `src/app/api/youth/resume/route.ts` | 미실행 (테스트 PDF 없음) | `%PDF-` 시그니처 검증 없음(MIME·확장자만). `PDF_TEXT_EMPTY` 처리 없음. 크기 초과를 400으로 반환(명세 413), 형식 오류도 400(명세 415). 저장 실패 `503 RESUME_SAVE_FAILED` 아님(500). evidence 원문 포함 검증과 사전 밖 id의 `unmapped` 이동 없음(필터링만). 업로드 시 `profile_version++`, `match_results` 삭제 없음. LLM 실패 시 휴리스틱 폴백으로 `completed` 처리됨(명세는 `failed`). 모델은 `gpt-4o-mini` 고정 |
-| 1-4 | 🟡 구현 | `src/server/matching/score.ts` (`calculateMatchScore`) | 시연 지원자 정책 5인은 확인. 점수 계산은 단위 테스트 미실행 | 경력 개월 M은 `declared_total_months`·`explicitly_no_experience`만 사용(employment 기간 합집합 계산 없음). `recommendable`에 "스킬·경험 교집합 ≥ 1"과 `!isClosed` 조건 없음(마감 제외는 Y05에서 처리). `fit_grade`(60/40 기준) 추가됨. 추천 이유는 서버 템플릿(LLM 작성 미구현) |
-| 1-5 | 🟡 구현, 미검증 | `src/app/api/youth/main/route.ts`, `src/app/api/youth/jobs/[jobId]/route.ts` | Y05는 DB GRANT 미적용으로 500 (`permission denied for table jobs`). Y06 미실행 | 정렬(점수→진행중→마감일→ID)·TOP 3·이유 TOP 3 한정은 반영. `match_results` 캐시 미사용(요청마다 계산). `match_status = 'verified'` 필터 없음. 이력서 없을 때 정렬이 `crawled_at DESC`(명세는 `posted_at DESC`). `preferred`를 `null`로 반환(`jobs.preferred` 미조회). Y06에서 마감 공고 포함 |
+| 공통 | ✅ 완료 | `src/lib/supabase/admin.ts`, `src/server/auth/require-user.ts` | 타입·린트·빌드 통과 | 쿠키 세션 우선 + `Authorization: Bearer` 폴백 지원 |
+| 1-1 | ✅ 완료 | `src/server/auth/crypto.ts` (`encryptPii`, `decryptPii`, `calcKoreanAge`, `getTodayKST`, `getEvaluatedMonthKST`) | 암복호화 왕복 일치 확인 | AES-256-GCM 암복호화, KST 만 나이·평가월 산출 |
+| 1-2 | ✅ 완료 | `src/app/api/youth/profile/route.ts`, `src/server/auth/youth-profile.ts` | Y01·Y02·Y03 실 Supabase E2E 통과 | Zod 검증, `CONSENT_REQUIRED`·`VALIDATION_ERROR`·`ONBOARDING_REQUIRED`·`PROFILE_ALREADY_EXISTS`·`ROLE_FORBIDDEN`·`ORIGIN_FORBIDDEN` 정합, PATCH 시 `profile_version++` & `match_results` 캐시 삭제 |
+| 1-3 | ✅ 완료 | `src/server/resumes/extract.ts`, `src/app/api/youth/resume/route.ts` | 실 시연 PDF(`이력서_A_강서울_디지털캠페인AE.pdf`) + OpenAI E2E 통과 | `%PDF-` 시그니처(415), 5MiB(413), `PDF_TEXT_EMPTY`(400), Storage 업로드(503 `RESUME_SAVE_FAILED`), `unpdf` ArrayBuffer detach 방지, evidence 원문 검증 및 `unmapped` 분리, `profile_version++` & `match_results` 삭제 |
+| 1-4 | ✅ 완료 | `src/server/matching/score.ts` (`calculateMatchScore`, `resolveCareerMonths`, `buildPersonalizedReason`) | 단위/통합 E2E 통과 (블렌드엑스 AE 100점 `high`) | 20/40/25/15 규칙 점수, `fit_grade`(high/medium/low), **경력 개월수 $M$ `employment` 월 합집합 보조 계산**, **81개 공고 계산 시 `reason: null` + TOP 3에만 개인 이력서(경험 제목·evidence·역량 근거·자격증) 기반 `match.reason` 생성** |
+| 1-5 | ✅ 완료 | `src/app/api/youth/main/route.ts`, `src/app/api/youth/jobs/[jobId]/route.ts` | Y05·Y06 실 Supabase E2E 통과 | **`match_results` 테이블 캐시 조회(`profile_version`·`job_version`·`algorithm_version`·`taxonomy_version`·`evaluated_month` 검증) 및 batch upsert 저장**, 정렬 4단계, 추천 TOP 3 한정 `reason` 제공 |
 
-**트랙 2 영역을 앞서 구현한 것**: `src/server/policy/evaluate.ts` (Step 2-1). 만 18~39세, 6개월 이내 경계 나이는 `추가 확인`, 정규직(regular·probation 충족 / non_regular·conversion 불일치), 시연 지원자 A~E 5인 기대 결과와 일치 확인. 트랙 2 개발자와 시그니처 합의 필요(`evaluateYouthPolicy({age, birthDate, sido})`, `evaluateJobPolicy({..., employment_kind})`).
+**트랙 2 영역 선구현 완료**: `src/server/policy/evaluate.ts` (Step 2-1). 만 18~39세, 6개월 이내 경계 나이는 `추가 확인`(`needs_check`), 정규직(`regular`·`probation` 충족 / `non_regular`·`conversion` 불일치), 시연 지원자 A~E 5인 기대 결과와 100% 일치 확인.
 
-**스키마에 맞춰 코드를 고친 것** (DB 구조는 변경 없음, GRANT만 추가)
-- `profiles`에는 이름·이메일이 없다. 이름은 `youth_profiles.name_cipher`, 이메일은 Auth에서 조회.
-- `jobs`는 `work_address`·`work_gu`·`deadline`·`status`를 쓴다. 마감 여부는 `status = 'closed'` 또는 `deadline < 오늘(KST)`로 계산.
+**스키마 정합 반영 내역** (DB 구조는 변경 없음, GRANT만 추가)
+- `profiles`에는 이름·이메일이 없으므로 이름은 `youth_profiles.name_cipher`, 이메일은 Auth에서 조회.
+- `jobs`는 `work_address`·`work_gu`·`deadline`·`status`·`preferred`를 사용하며 마감 여부는 `status = 'closed'` 또는 `deadline < 오늘(KST)`로 계산.
 - 업종은 `jobs.industry`, 없으면 `companies.business_desc`로 대체.
-
-**🔄 09:57 에러코드·가드 명세 정합 반영**: 1-2·1-3·1-5 행의 "에러코드 불일치", "가드 없음", "시그니처·`PDF_TEXT_EMPTY` 없음", "413/415 아님", "캐시 삭제 없음", "`match_status` 필터 없음", "정렬 `posted_at`" 항목은 해결됨 (Zod 검증, `CONSENT_REQUIRED`·`VALIDATION_ERROR`·`ONBOARDING_REQUIRED`·`PROFILE_ALREADY_EXISTS`·`ROLE_FORBIDDEN`·`ORIGIN_FORBIDDEN`, 413/415, `%PDF-` 검사, `PDF_TEXT_EMPTY`, 503 `RESUME_SAVE_FAILED`, evidence 원문 검증, LLM 실패 시 `failed`, PATCH·재업로드 시 `profile_version++`와 `match_results` 삭제). 단 `OPENAI_API_KEY`가 없으면 개발용 휴리스틱으로 `completed` 처리됨. **재검증(E2E)은 아직 안 함.**
-
-**다음 할 일 (우선순위)**
-1. Supabase에서 `companies_jobs_final.sql` 재실행(GRANT) → Y05·Y06 E2E 확인
-2. 테스트 PDF로 Y04 E2E 확인
-3. 에러코드·HTTP 상태·가드를 명세에 맞춤 (`CONSENT_REQUIRED`, `VALIDATION_ERROR`, `ONBOARDING_REQUIRED`, 413·415, `PDF_TEXT_EMPTY`, `PROFILE_ALREADY_EXISTS`)
-4. `match_results` 캐시 읽기·쓰기 및 PATCH·재업로드 시 무효화
-5. 이력서 정제의 evidence 원문 검증, 경력 개월 합집합 계산, LLM 실패 시 `failed` 처리
-6. 추천 이유 LLM 작성(D-33), `recommendable` 조건 보완
-7. `require-user.ts` Bearer 허용 여부 결정, 테스트 계정 삭제
 
 ### Step 1-1. `src/server/auth/crypto.ts` (15분 — **완성 즉시 먼저 커밋해 트랙 2와 공유**)
 - **구현 함수 3개**:
