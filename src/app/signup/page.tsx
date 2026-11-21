@@ -5,7 +5,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import JobitdaModal from "@/components/JobitdaModal";
 import {categories,writeDemoProfile,type DemoProfile} from "@/lib/demo-data";
-import {getLocalities} from "@/lib/regions";
+import {getLocalities,PROVINCES} from "@/lib/regions";
 import {routes} from "@/lib/jobitda-routes";
 
 type ModalName="consent"|"duplicate"|"analyzing"|"invalid"|null;
@@ -13,7 +13,8 @@ const MAX_RESUME_BYTES=5*1024*1024;
 export default function SignupPage(){
   const router=useRouter();
   const [name,setName]=useState(""); const [birth,setBirth]=useState("");
-  const [province]=useState("서울특별시");const [district,setDistrict]=useState(""); const [chosen,setChosen]=useState<string[]>([]);
+  const [province,setProvince]=useState("서울특별시");const [district,setDistrict]=useState(""); const [chosen,setChosen]=useState<string[]>([]);
+  function changeProvince(next:string){setProvince(next);setDistrict("");setError("");}
   const [file,setFile]=useState<File|null>(null); const [email,setEmail]=useState("");
   const [password,setPassword]=useState(""); const [agreed,setAgreed]=useState(false);
   const [modal,setModal]=useState<ModalName>(null); const [error,setError]=useState("");
@@ -57,10 +58,10 @@ export default function SignupPage(){
       <p className="demo-form-note">로컬 시연 화면입니다. 실제 개인정보나 평소 사용하는 비밀번호를 입력하지 말고 가상 정보만 사용해주세요. 실제 회원가입·AI 분석·파일 업로드는 수행되지 않습니다.</p>
       <label className="field-group"><span className="form-label">이름</span><input className="field" value={name} onChange={e=>setName(e.target.value)} placeholder="예: 홍길동" autoComplete="off"/></label>
       <label className="field-group"><span className="form-label">생년월일</span><input className="field" type="date" value={birth} onChange={e=>setBirth(e.target.value)} max="2026-11-21"/><span className="form-hint">만 나이는 자동 계산 · 지원금 기본요건 만 18~39세 판정 시 사용</span></label>
-      <div className="field-group"><label className="form-label" htmlFor="province">실거주지 주소 (서울특별시 / 자치구)</label><div className="input-row">
-        <select id="province" className="field" value={province} disabled aria-label="서울특별시 고정"><option value="서울특별시">서울특별시</option></select>
-        <select id="locality" className="field" value={district} aria-label="서울특별시 자치구 선택" disabled={!province} onChange={e=>setDistrict(e.target.value)}><option value="">자치구 선택</option>{getLocalities("서울특별시").map(d=><option key={d} value={d}>{d}</option>)}</select>
-      </div><p className="form-hint">실거주지 기준 서울특별시 자치구를 선택해주세요. 상세 주소는 수집하지 않으며, 정책 요건은 별도 확인합니다.</p></div>
+      <div className="field-group"><label className="form-label" htmlFor="province">실거주지 주소 (시·도 / 시·군·구)</label><div className="input-row">
+        <select id="province" className="field" value={province} aria-label="시·도 선택" onChange={e=>changeProvince(e.target.value)}>{PROVINCES.map(p=><option key={p} value={p}>{p}</option>)}</select>
+        <select id="locality" className="field" value={district} aria-label="시·군·구 선택" disabled={!province} onChange={e=>setDistrict(e.target.value)}><option value="">시·군·구 선택</option>{getLocalities(province).map(d=><option key={d} value={d}>{d}</option>)}</select>
+      </div><p className="form-hint">실거주지 기준 시·도와 시·군·구를 선택해주세요. 상세 주소는 수집하지 않으며, 지원금 거주 요건(예: 서울 거주)은 제도별로 별도 확인합니다.</p></div>
       <div className="field-group"><p className="form-label">희망직무 카테고리 (최대 3개)</p><div className="chip-row" role="group" aria-label="희망직무 카테고리">{categories.map(c=><button className={`chip ${chosen.includes(c)?"is-selected":""}`} type="button" key={c} aria-pressed={chosen.includes(c)} onClick={()=>toggleCategory(c)}>{c}</button>)}</div><p className="form-hint">{chosen.length}개 선택됨</p></div>
       <div className="field-group"><label className="form-label" htmlFor="resume">이력서 PDF (선택)</label><div className="upload-area"><div className="upload-inner"><span aria-hidden="true">📄</span><div className="upload-text"><strong>{file?`${file.name} 선택됨`:"이력서 PDF를 업로드하세요."}</strong><small>{file?"PDF 선택 완료 · 실제 서버에는 업로드되지 않음":"텍스트 PDF · 5MB 이하 · 5쪽 이하(서버 검증 예정)"}</small></div><label htmlFor="resume" className="btn btn-orange">{file?"이력서 재업로드":"이력서 업로드"}</label></div><input id="resume" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={chooseFile}/></div><p className="form-hint">올리지 않아도 가입 가능. 단, 이력서 등록 전에는 AI 맞춤 추천과 지원이 제한돼요.</p></div>
       <label className="field-group"><span className="form-label">이메일</span><input className="field" type="email" autoComplete="off" placeholder="demo@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label>
