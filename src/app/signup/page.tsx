@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type ChangeEvent, type FormEvent } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import JobitdaModal from "@/components/JobitdaModal";
 import {categories,writeDemoProfile,type DemoProfile} from "@/lib/demo-data";
@@ -10,14 +10,15 @@ import {routes} from "@/lib/jobitda-routes";
 
 type ModalName="consent"|"duplicate"|"analyzing"|"invalid"|null;
 const MAX_RESUME_BYTES=5*1024*1024;
-export default function SignupPage(){
+function SignupInner(){
+  const searchParams=useSearchParams();
   const router=useRouter();
   const [name,setName]=useState(""); const [birth,setBirth]=useState("");
   const [province]=useState("서울특별시");const [district,setDistrict]=useState(""); const [chosen,setChosen]=useState<string[]>([]);
   const [file,setFile]=useState<File|null>(null); const [email,setEmail]=useState("");
   const [password,setPassword]=useState(""); const [agreed,setAgreed]=useState(false);
   const [modal,setModal]=useState<ModalName>(null); const [error,setError]=useState("");
-  const [role,setRole]=useState<"youth"|"company">("youth");
+  const [role,setRole]=useState<"youth"|"company">(searchParams.get("role")==="company"?"company":"youth");
   function toggleCategory(category:string){
     setError("");
     setChosen(prev=>prev.includes(category)?prev.filter(item=>item!==category):prev.length>=3?prev:[...prev,category]);
@@ -61,7 +62,7 @@ export default function SignupPage(){
         <select id="province" className="field" value={province} disabled aria-label="서울특별시 고정"><option value="서울특별시">서울특별시</option></select>
         <select id="locality" className="field" value={district} aria-label="서울특별시 자치구 선택" disabled={!province} onChange={e=>setDistrict(e.target.value)}><option value="">자치구 선택</option>{getLocalities("서울특별시").map(d=><option key={d} value={d}>{d}</option>)}</select>
       </div><p className="form-hint">실거주지 기준 서울특별시 자치구를 선택해주세요. 상세 주소는 수집하지 않으며, 정책 요건은 별도 확인합니다.</p></div>
-      <div className="field-group"><p className="form-label">희망직무 카테고리 (최대 3개)</p><div className="chip-row" role="group" aria-label="희망직무 카테고리">{categories.map(c=><button className={`chip ${chosen.includes(c)?"is-selected":""}`} type="button" key={c} aria-pressed={chosen.includes(c)} onClick={()=>toggleCategory(c)}>{c}</button>)}</div><p className="form-hint">{chosen.length}개 선택됨</p></div>
+      <div className="field-group"><p className="form-label">희망직무 카테고리 (최대 3개)</p><div className="chip-row" role="group" aria-label="희망직무 카테고리">{categories.map(c=><button className={`chip ${chosen.includes(c)?"is-selected":""}`} type="button" key={c} aria-pressed={chosen.includes(c)} disabled={chosen.length>=3&&!chosen.includes(c)} onClick={()=>toggleCategory(c)}>{c}</button>)}</div><p className="form-hint">{chosen.length}개 선택됨</p></div>
       <div className="field-group"><label className="form-label" htmlFor="resume">이력서 PDF (선택)</label><div className="upload-area"><div className="upload-inner"><span aria-hidden="true">📄</span><div className="upload-text"><strong>{file?`${file.name} 선택됨`:"이력서 PDF를 업로드하세요."}</strong><small>{file?"PDF 선택 완료 · 실제 서버에는 업로드되지 않음":"텍스트 PDF · 5MB 이하 · 5쪽 이하(서버 검증 예정)"}</small></div><label htmlFor="resume" className="btn btn-orange">{file?"이력서 재업로드":"이력서 업로드"}</label></div><input id="resume" className="visually-hidden" type="file" accept=".pdf,application/pdf" onChange={chooseFile}/></div><p className="form-hint">올리지 않아도 가입 가능. 단, 이력서 등록 전에는 AI 맞춤 추천과 지원이 제한돼요.</p></div>
       <label className="field-group"><span className="form-label">이메일</span><input className="field" type="email" autoComplete="off" placeholder="demo@example.com" value={email} onChange={e=>setEmail(e.target.value)}/></label>
       <label className="field-group"><span className="form-label">비밀번호</span><input className="field" type="password" autoComplete="new-password" placeholder="8자 이상 (시연용 가상 비밀번호)" value={password} onChange={e=>setPassword(e.target.value)}/><span className="form-hint">8자 이상 · 브라우저 저장/서버 전송 안 함</span></label>
@@ -74,4 +75,8 @@ export default function SignupPage(){
     {modal==="invalid"&&<JobitdaModal title="입력 정보를 확인해주세요" message="필수 항목을 작성한 후 다시 시도해주세요." onClose={()=>setModal(null)}/>}
     {modal==="analyzing"&&<JobitdaModal title="맞춤 공고를 분석하고 있어요" message={"AI로 작성하신 개인정보 및 이력서를 분석하고 있습니다.\n약 20~40초 소요될 수 있습니다.\n\n※ 이 화면은 시연용이며 실제 AI 분석은 실행되지 않습니다."} primaryLabel="닫기" onClose={()=>{setModal(null);router.push(routes.youth);}}/>}
   </main></>;
+}
+
+export default function SignupPage(){
+  return <Suspense fallback={<main className="page-shell">회원가입 화면을 불러오는 중...</main>}><SignupInner/></Suspense>;
 }

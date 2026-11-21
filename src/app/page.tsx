@@ -19,7 +19,7 @@ export default function Home(){
         </article>
         <article className="hero-card"><h2>기업으로 시작</h2>
           <p>자사 공고에 지원한 청년을<br/>적합도와 인센티브 기본요건으로 검토</p>
-          <p className="hero-extra">시연 계정 로그인 · 지원자 목록 · 기본요건 필터</p>
+          <p className="hero-extra">기업 회원가입 · 지원자 목록 · 기본요건 요약 · 공고 지원금 확인</p>
           <Link className="btn btn-purple btn-wide" href="/login?role=company">기업으로 시작</Link>
         </article>
       </section>

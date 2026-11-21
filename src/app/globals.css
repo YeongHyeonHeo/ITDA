@@ -60,3 +60,10 @@
 .company-subsidy-feedback{border-radius:10px;background:#f8f7fd;padding:17px;font-size:13px;color:#70788d}
 .company-subsidy-disclaimer{font-size:11px;color:#989daf;line-height:1.7;margin:16px 0 0;word-break:keep-all}
 @media(max-width:760px){.company-subsidy-box{padding:20px}.company-subsidy-layout{grid-template-columns:1fr}.company-subsidy-heading{flex-wrap:wrap}.company-subsidy-job{flex-wrap:wrap}}
+
+/* PRD v1.5 UI batch 1: B1, B7, B15, A8, C1, C2 */
+.login-signup-link{margin:16px 0 0;text-align:center;color:#858ba0;font-size:13px}
+.login-signup-link a{color:#8066D9;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.chip:disabled{opacity:.45;cursor:not-allowed}
+.company-policy-note{color:#7a8295;font-size:11px;line-height:1.5;align-self:center;max-width:280px;word-break:keep-all}
+@media(max-width:760px){.company-policy-note{flex-basis:100%;max-width:100%;}}
