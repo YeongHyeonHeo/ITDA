@@ -475,10 +475,14 @@ def main():
                 sql_val(1),
             ]
             assert len(job_cols) == len(vals), f"Column/value mismatch: {len(job_cols)} != {len(vals)}"
+            # ON CONFLICT 재실행 시 AI 정제 결과·버전 라이프사이클을 보존한다 (docs/crawling-plan.md §3-2, §4).
+            # 최초 INSERT 는 values 로 matching_json/extraction_status/job_version 을 그대로 세팅하고,
+            # 재적재(conflict)에서는 아래 컬럼을 덮어쓰지 않아 정제 단계 결과와 job_version 증가분을 지킨다.
+            preserve_on_conflict = ("source_job_id", "matching_json", "extraction_status", "job_version")
             updates = ", ".join(
                 f"{col} = excluded.{col}"
                 for col in job_cols
-                if col not in ("source_job_id",)
+                if col not in preserve_on_conflict
             )
             f.write(
                 f"insert into public.jobs ({', '.join(job_cols)})\n"

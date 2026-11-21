@@ -7,6 +7,10 @@ out/
 .DS_Store
 .vercel/
 
+# Python
+__pycache__/
+*.pyc
+
 # Local reference material (not shared in git)
 gangso-matching-share/
 md/
