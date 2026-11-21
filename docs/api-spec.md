@@ -55,7 +55,7 @@
 |---|---|---|
 | `400` | `VALIDATION_ERROR`, `CONSENT_REQUIRED`, `PDF_TEXT_EMPTY`, `RESUME_REQUIRED` | 요청 스키마 오류, 동의 누락, 텍스트 없는 PDF, 이력서 미등록 |
 | `401` | `UNAUTHORIZED` | 미로그인 또는 세션 만료 |
-| `403` | `ROLE_FORBIDDEN`, `COMPANY_ACCESS_DENIED`, `APPLICATION_ACCESS_DENIED` | 역할 불일치, 타 기업 공고 접근, 타인 이력서 PDF 접근 |
+| `403` | `ROLE_FORBIDDEN`, `ORIGIN_FORBIDDEN`, `COMPANY_ACCESS_DENIED`, `APPLICATION_ACCESS_DENIED` | 역할 불일치, Origin 불일치(CSRF), 타 기업 공고 접근, 타인 이력서 PDF 접근 |
 | `404` | `JOB_NOT_FOUND`, `APPLICATION_NOT_FOUND`, `RESUME_NOT_FOUND` | 존재하지 않거나 비공개/미검증 공고, 없는 지원/파일 |
 | `409` | `PROFILE_ALREADY_EXISTS`, `ONBOARDING_REQUIRED`, `POSTING_CLOSED` | 중복 온보딩, 온보딩 미완료, 마감된 공고 지원 |
 | `413` / `415` | `FILE_TOO_LARGE` / `UNSUPPORTED_FILE_TYPE` | PDF 5MiB 초과 / PDF 시그니처 불일치 |
