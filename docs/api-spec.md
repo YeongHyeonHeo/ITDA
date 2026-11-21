@@ -226,15 +226,15 @@ PDF 이력서를 업로드하고 텍스트 추출 → Storage 저장 → `resume
 ---
 
 ### C01. `GET /api/company/overview` — 기업
-- **200 OK (`CompanyOverviewResponse`)**: `{ companies: [{ company: CompanySummary, jobs: [{ job_id, title, is_closed, applicant_count }] }] }`
-  - `company_accounts`로 연결된 자사 정보(`id`, `name`, `industry`, `gu`, `is_demo`)와 자사 공고 목록·지원자 수를 반환합니다 (`S5` 상단 기업 헤더 및 공고 전환 드롭다운용).
+- **200 OK (`CompanyOverviewResponse`)**: `{ companies: [{ company: CompanySummary, jobs: [{ job_id, title, is_closed, applicant_count, job_policy }] }] }`
+  - `company_accounts`로 연결된 자사 정보(`id`, `name`, `industry`, `gu`, `is_demo`)와 자사 공고 목록·지원자 수·공고별 지원금 대상 여부(`job_policy`: 정규직 `eligible`, 인턴·비정규 `ineligible`, 불명 `needs_check`)를 반환합니다 (`S5` 상단 기업 헤더 및 공고 전환 드롭다운용).
 
 ---
 
 ### C02. `GET /api/company/jobs/{jobId}/applicants?policy=all` — 기업·공고 소유
 - **Query**: `policy` = `all`(기본) | `eligible` | `needs_check` | `ineligible` (그 외 `400 VALIDATION_ERROR`).
 - **200 OK (`ApplicantsResponse`)**:
-  - `{ job: { job_id, title }, counts: { all, eligible, needs_check, ineligible }, applicants: Applicant[] }`
+  - `{ job: { job_id, title, job_policy }, counts: { all, eligible, needs_check, ineligible }, applicants: Applicant[] }`
   - `counts`는 필터 전 전체 기준이며 `eligible + needs_check + ineligible === all`을 항상 만족합니다.
   - `applicants` 정렬: 지원 당시 `score DESC (NULL 마지막) → applied_at ASC → application_id ASC`.
   - **제공 필드 (`S2` 개인정보 제공 동의 및 `S5` 시안 기준)**: 지원 시점 기준 `name`, `age`, `address`(`sido`, `sigungu`), `email`, `desired_categories`, `resume_summary`(`education`, `major`, `certificates`, `skills`, `experiences`), `match_snapshot`(`matched_ids` 일치 역량 / `missing_ids` 미확인 역량 포함), `policy_snapshot`, `resume_url`(`/api/applications/{id}/resume`), `applied_at`을 반환합니다. (상세 도로명주소·생년월일 원본·이력서 전체 raw text는 제외)

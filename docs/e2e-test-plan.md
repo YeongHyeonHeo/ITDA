@@ -108,7 +108,7 @@
 | 코드 | 대상 API | 호출 주체 / 입력 | 기대 HTTP & 검증 포인트 |
 | :---: | :--- | :--- | :--- |
 | **T27** | `C01` & `C02` | `Youth A` (청년 계정)로 기업 API 호출 | `403 ROLE_FORBIDDEN` |
-| **T28** | `C01` & `C02` | `Company BlendX`로 `GET /api/company/overview` 및 `GET /api/company/jobs/{OpenJobId}/applicants` (`?policy=all`, `eligible`, `needs_check`, `invalid`) | • `C01`: 블렌드엑스 `is_demo === true`, `OpenJobId`의 `applicant_count >= 2` 확인<br>• `C02 (?policy=all)`: `counts.all === counts.eligible + counts.needs_check + counts.ineligible` 일치, 지원자 목록이 `match_snapshot.score DESC` 순(`Youth A` 100점 `eligible` → `Youth C` `needs_check`) 정렬 확인<br>• `C02 (?policy=eligible)`: `Youth A`만 반환되고 `counts`는 전체 기준 유지 확인<br>• `C02 (?policy=needs_check)`: `Youth C`만 반환 확인<br>• `C02 (?policy=invalid)`: `400 VALIDATION_ERROR` |
+| **T28** | `C01` & `C02` | `Company BlendX`로 `GET /api/company/overview` 및 `GET /api/company/jobs/{OpenJobId}/applicants` (`?policy=all`, `eligible`, `needs_check`, `invalid`) | • `C01`: 블렌드엑스 `is_demo === true`, `OpenJobId`의 `applicant_count >= 2` 및 **`job_policy.status === "eligible"` (`regular === "pass"`)** 확인<br>• `C02 (?policy=all)`: **`job.job_policy.status === "eligible"`** 확인, `counts.all === counts.eligible + counts.needs_check + counts.ineligible` 일치, 지원자 목록이 `match_snapshot.score DESC` 순(`Youth A` 100점 `eligible` → `Youth C` `needs_check`) 정렬 확인<br>• `C02 (?policy=eligible)`: `Youth A`만 반환되고 `counts`는 전체 기준 유지 확인<br>• `C02 (?policy=needs_check)`: `Youth C`만 반환 확인<br>• `C02 (?policy=invalid)`: `400 VALIDATION_ERROR` |
 | **T29** | `C02` (교차 권한 차단) | `Company BlendX` 계정으로 **타사 공고(`OtherCompanyJobId`)** 지원자 목록 조회 | **`403 COMPANY_ACCESS_DENIED`** (PRD D-29 필수 체크항목) |
 
 ---

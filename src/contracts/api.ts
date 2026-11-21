@@ -102,8 +102,26 @@ export type ApplicationSummary = {
   resume_url: string;
 };
 export type ApplicationsResponse = { applications: ApplicationSummary[] };
+export type EmploymentKind = "regular" | "probation" | "conversion" | "non_regular" | "unknown";
+export type JobIncentivePolicy = {
+  status: PolicyStatus; // "eligible" | "needs_check" | "ineligible"
+  regular: "pass" | "fail" | "unknown";
+  employment_kind: EmploymentKind;
+  employment_type_raw: string | null;
+  reason: string;
+  disclaimer: string;
+};
 export type CompanyOverviewResponse = {
-  companies: { company: CompanySummary; jobs: { job_id: string; title: string; is_closed: boolean; applicant_count: number }[] }[];
+  companies: {
+    company: CompanySummary;
+    jobs: {
+      job_id: string;
+      title: string;
+      is_closed: boolean;
+      applicant_count: number;
+      job_policy: JobIncentivePolicy;
+    }[];
+  }[];
 };
 export type ApplicantResumeSummary = {
   education: string | null;
@@ -133,7 +151,7 @@ export type Applicant = {
   applied_at: string;
 };
 export type ApplicantsResponse = {
-  job: { job_id: string; title: string };
+  job: { job_id: string; title: string; job_policy: JobIncentivePolicy };
   counts: { all: number; eligible: number; needs_check: number; ineligible: number };
   applicants: Applicant[];
 };

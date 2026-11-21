@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/server/auth/require-user";
 import { createAdminClient, jsonError } from "@/lib/supabase/admin";
+import { evaluateJobIncentivePolicy } from "@/server/policy/evaluate";
 import type { Applicant, ApplicantsResponse, PolicyResult, PolicyStatus } from "@/contracts/api";
 import type { CategoryId, MatchResult } from "@/contracts/matching";
 
@@ -30,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
   // 공고 존재 확인
   const { data: job } = await admin
     .from("jobs")
-    .select("id, title, company_id")
+    .select("id, title, company_id, employment_kind, employment_type_raw")
     .eq("id", jobId)
     .maybeSingle();
   if (!job) return jsonError(404, "JOB_NOT_FOUND", "존재하지 않는 공고입니다.");
@@ -112,7 +113,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
   });
 
   const body: ApplicantsResponse = {
-    job: { job_id: job.id, title: job.title },
+    job: {
+      job_id: job.id,
+      title: job.title,
+      job_policy: evaluateJobIncentivePolicy({
+        employment_kind: job.employment_kind,
+        employment_type_raw: job.employment_type_raw,
+      }),
+    },
     counts,
     applicants,
   };
